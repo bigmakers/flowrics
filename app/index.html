@@ -36,7 +36,16 @@ a{color:var(--c3)}
 .dm .lm{font-weight:300;text-shadow:2px 2px 3px var(--dm-shadow-soft)}                      /* 英語: 機能語 */
 .dm .o{font-weight:400;text-shadow:2px 2px 3px var(--dm-shadow-soft)}                       /* 記号など */
 @keyframes fly{from{transform:translateX(0)}to{transform:translateX(var(--dist))}}
-#danmaku.paused .dm{animation-play-state:paused}
+#danmaku.paused .dm,#danmaku.paused .dm span{animation-play-state:paused}
+/* 歌詞のタイミングに合わせた動き: メイン層の発射時に文字グループが順に弾む */
+.dm.pop span{animation:pop .55s cubic-bezier(.2,1.6,.4,1) both}
+.dm.pop.strong span{animation:popStrong .65s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes pop{0%{transform:translateY(.35em) scale(.6);opacity:0}60%{transform:translateY(-.12em) scale(1.12);opacity:1}100%{transform:none;opacity:1}}
+@keyframes popStrong{0%{transform:translateY(.7em) scale(.3) rotate(-6deg);opacity:0}55%{transform:translateY(-.22em) scale(1.28) rotate(2deg);opacity:1}100%{transform:none;opacity:1}}
+#stage.beat{animation:beat .32s ease-out}
+@keyframes beat{0%{transform:scale(1.025)}100%{transform:scale(1)}}
+#nowline.pop{animation:nowpop .4s cubic-bezier(.2,1.6,.4,1)}
+@keyframes nowpop{0%{transform:scale(.9);opacity:.4}100%{transform:none;opacity:.95}}
 #nowline{position:absolute;left:0;right:0;bottom:92px;text-align:center;padding:0 16px;pointer-events:none;
   font-family:var(--dm-font);font-size:26px;font-weight:700;color:var(--dm-color);text-shadow:2px 2px 6px var(--dm-shadow-strong);opacity:.95;
   transition:opacity .2s}
@@ -241,6 +250,15 @@ a{color:var(--c3)}
       </div>
     </div>
     <div class="field">
+      <label data-i18n="motion"></label>
+      <div class="seg" id="motionSeg">
+        <button data-v="off" data-i18n="motionOff"></button>
+        <button data-v="soft" data-i18n="motionSoft"></button>
+        <button data-v="strong" data-i18n="motionStrong"></button>
+      </div>
+      <div class="hint" data-i18n="motionHint"></div>
+    </div>
+    <div class="field">
       <label data-i18n="font"></label>
       <select id="font"></select>
     </div>
@@ -284,6 +302,7 @@ const I18N = {
     track: '曲名', artist: 'アーティスト', search: '検索',
     offset: '歌詞のタイミング調整', lrcManual: 'LRC を直接貼り付け', applyLrc: 'この LRC を使う',
     fontSize: '文字サイズ', sizeRandom: '混', sizeMedium: '中', sizeLarge: '大', sizeXL: '特大',
+    motion: '歌詞に合わせて動く', motionOff: 'オフ', motionSoft: '控えめ', motionStrong: '強め', motionHint: '歌詞の行が始まる瞬間に文字が弾みます。「強め」では画面全体も一瞬脈打ちます。',
     speed: '流れる速さ(画面を横切る秒数)', dim: '背景の暗さ(動画の透け具合)', font: 'フォント', bg: '背景色',
     bgBlack: 'ブラック', bgTurquoise: 'ターコイズ', bgOrange: 'オレンジ', bgRed: 'レッド', bgWhite: 'ホワイト', bgBeige: 'ベージュ',
     showNow: '現在の行を画面下にも表示', skipCredits: '作詞・作曲などのクレジット行を除外',
@@ -315,6 +334,7 @@ const I18N = {
     track: 'Track', artist: 'Artist', search: 'Search',
     offset: 'Lyrics timing offset', lrcManual: 'Paste LRC manually', applyLrc: 'Use this LRC',
     fontSize: 'Font size', sizeRandom: 'Mixed', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
+    motion: 'Move with the lyrics', motionOff: 'Off', motionSoft: 'Subtle', motionStrong: 'Strong', motionHint: 'Characters bounce in as each lyric line starts. "Strong" also pulses the whole screen.',
     speed: 'Scroll speed (seconds across the screen)', dim: 'Background dim (video visibility)', font: 'Font', bg: 'Background color',
     bgBlack: 'Black', bgTurquoise: 'Turquoise', bgOrange: 'Orange', bgRed: 'Red', bgWhite: 'White', bgBeige: 'Beige',
     showNow: 'Show current line at bottom', skipCredits: 'Skip credit lines (lyricist / composer)',
@@ -395,7 +415,7 @@ const BG = {
 const saved = store.get('settings', {});
 if (!('sizeOpt' in saved)) { delete saved.fontSize; delete saved.speed; delete saved.lanes; delete saved.color; delete saved.font; delete saved.dim; }  // 旧レーン版の設定は捨てる
 const settings = Object.assign({
-  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true
+  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true, motion: 'soft'
 }, saved);
 delete settings.ytKey;
 let queue = store.get('queue', []);   // [{id,title,author}]
@@ -459,16 +479,21 @@ function tokenize(text) {
   }
   return tokens;
 }
-function spawn(text, opacity = 1, scale = 1) {
+function spawn(text, opacity = 1, scale = 1, layerId = 'main') {
   const box = $('#danmaku'); const W = box.clientWidth, H = box.clientHeight;
   const fixed = SIZE_OPT[settings.sizeOpt] || 0;
   const base = (fixed > 0 ? fixed : RANDOM_SIZES[Math.floor(Math.random() * RANDOM_SIZES.length)]) * scale;
   const el = document.createElement('div'); el.className = 'dm'; el.style.opacity = opacity;
+  const pop = settings.motion !== 'off' && layerId === 'main';
+  if (pop) { el.classList.add('pop'); if (settings.motion === 'strong') el.classList.add('strong'); }
+  let n = 0;
   for (const tok of tokenize(text)) {
     const sp = document.createElement('span'); sp.className = TOKEN_CLASS[tok.type]; sp.textContent = tok.text;
     sp.style.fontSize = (base * SIZE_RATIO[tok.type]).toFixed(1) + 'px';
+    if (pop) sp.style.animationDelay = (n++ * 45) + 'ms';   // 文字グループごとに順に弾む
     el.appendChild(sp);
   }
+  if (pop && settings.motion === 'strong') retrigger($('#stage'), 'beat');
   const totalH = base * 2.5, bottomInset = ($('#controls').offsetHeight || 90);
   const maxY = Math.max(H - totalH - bottomInset - 20, 10);
   el.style.top = (10 + Math.random() * (maxY - 10)) + 'px';
@@ -476,8 +501,9 @@ function spawn(text, opacity = 1, scale = 1) {
   const w = el.offsetWidth;
   el.style.setProperty('--dist', `-${W + w + 20}px`);
   el.style.animationDuration = settings.flySec + 's';
-  el.addEventListener('animationend', () => el.remove());
+  el.addEventListener('animationend', e => { if (e.target === el) el.remove(); });   // span の弾みアニメーション終了で消さない
 }
+function retrigger(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 function clearDanmaku() { $('#danmaku').innerHTML = ''; fired.clear(); }
 function setNow(text) { $('#nowline').textContent = text || ''; }
 
@@ -784,8 +810,8 @@ function tick() {
       const key = i + '_' + ly.id;
       if (fired.has(key)) continue;
       fired.add(key);
-      spawn(L.text, ly.opacity, ly.scale);
-      if (ly.id === 'main') setNow(L.text);
+      spawn(L.text, ly.opacity, ly.scale, ly.id);
+      if (ly.id === 'main') { setNow(L.text); if (settings.motion !== 'off') retrigger($('#nowline'), 'pop'); }
     }
   }
 }
@@ -800,6 +826,7 @@ function applySettings() {
   root.setProperty('--dm-shadow-strong', `rgba(${bg.shadow},.9)`);
   root.setProperty('--dm-shadow-soft', `rgba(${bg.shadow},.7)`);
   $$('#sizeSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === settings.sizeOpt));
+  $$('#motionSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === settings.motion));
   $$('#bgSwatches button').forEach(b => b.classList.toggle('active', b.dataset.v === settings.bg));
   $('#font').value = settings.font;
   $('#speed').value = settings.flySec; $('#speedVal').textContent = settings.flySec + 's';
@@ -815,6 +842,7 @@ function bind(id, key, parse, after) {
 FONTS.forEach(([v, label]) => { const o = document.createElement('option'); o.value = v; o.textContent = label; o.style.fontFamily = v; $('#font').appendChild(o); });
 Object.entries(BG).forEach(([k, v]) => { const b = document.createElement('button'); b.dataset.v = k; b.style.background = v.bg; b.addEventListener('click', () => { settings.bg = k; applySettings(); }); $('#bgSwatches').appendChild(b); });
 $$('#sizeSeg button').forEach(b => b.addEventListener('click', () => { settings.sizeOpt = b.dataset.v; applySettings(); }));
+$$('#motionSeg button').forEach(b => b.addEventListener('click', () => { settings.motion = b.dataset.v; applySettings(); }));
 $$('#bgSwatches button').forEach(b => { b.title = t('bg' + b.dataset.v[0].toUpperCase() + b.dataset.v.slice(1)); });
 bind('speed', 'flySec', e => +e.value);
 bind('dimRange', 'dim', e => +e.value);
