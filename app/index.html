@@ -181,6 +181,15 @@ a{color:var(--c3)}
 
   <section class="tab active" id="tab-queue">
     <div class="field">
+      <label data-i18n="ytSearch"></label>
+      <div class="inline">
+        <input type="search" id="ytq" autocomplete="off" data-i18n-ph="ytSearchPh">
+        <button class="btn primary" id="ytSearchBtn" data-i18n="search"></button>
+      </div>
+      <div class="status" id="ytStatus"></div>
+      <ul class="list" id="ytResults" hidden></ul>
+    </div>
+    <div class="field">
       <label data-i18n="ytUrl"></label>
       <div class="inline">
         <input type="url" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
@@ -249,6 +258,11 @@ a{color:var(--c3)}
       <label><span data-i18n="speed"></span> <span class="val" id="speedVal"></span></label>
       <input type="range" id="speed" min="3" max="15" step="1">
     </div>
+    <div class="field">
+      <label data-i18n="ytKey"></label>
+      <input type="text" id="ytKey" autocomplete="off" spellcheck="false" placeholder="AIza...">
+      <div class="hint" data-i18n="ytKeyHint"></div>
+    </div>
     <label class="check"><input type="checkbox" id="showNow"> <span data-i18n="showNow"></span></label>
     <label class="check"><input type="checkbox" id="skipCredits"> <span data-i18n="skipCredits"></span></label>
     <div class="hint" data-i18n="keys"></div>
@@ -268,7 +282,10 @@ const I18N = {
   ja: {
     empty: '右上の ☰ から YouTube の URL を追加すると、曲に合わせて歌詞が弾幕のように流れます。',
     share: '共有', tabQueue: 'キュー', tabLyrics: '歌詞', tabSettings: '設定',
-    ytUrl: 'YouTube の URL または動画ID', add: '追加',
+    ytSearch: 'YouTube を検索', ytSearchPh: '曲名 アーティスト', ytUrl: 'YouTube の URL または動画ID', add: '追加',
+    ytSearching: 'YouTube を検索中…', ytNoResults: '見つかりませんでした。', ytNoKey: 'API キーが未設定なので YouTube の検索結果を新しいタブで開きました。動画の URL をコピーして上の欄に貼り付けてください。設定タブでキーを登録するとここに結果が出ます。',
+    ytQuota: '今日の検索回数の上限に達しました(YouTube Data API の無料枠)。URL の貼り付けは引き続き使えます。', ytKeyBad: 'API キーが無効か、このサイトからの利用が許可されていません。', ytErr: 'YouTube 検索に失敗しました: ',
+    ytKey: 'YouTube Data API キー(検索に使用)', ytKeyHint: 'Google Cloud Console で YouTube Data API v3 を有効にして API キーを作成し、「HTTP リファラー」でこのサイトのドメインに制限してください。キーはこのブラウザにだけ保存されます。無料枠は 1 日およそ 100 回の検索です。',
     ytHint: '例: https://www.youtube.com/watch?v=xxxx / youtu.be/xxxx / Shorts の URL も使えます。埋め込みが許可されていない動画は再生できません。',
     clear: 'すべて削除', queueEmpty: 'キューは空です',
     track: '曲名', artist: 'アーティスト', search: '検索',
@@ -296,7 +313,10 @@ const I18N = {
   en: {
     empty: 'Open ☰ (top right) and add a YouTube URL. Lyrics will flow across the screen in sync with the music.',
     share: 'Share', tabQueue: 'Queue', tabLyrics: 'Lyrics', tabSettings: 'Settings',
-    ytUrl: 'YouTube URL or video ID', add: 'Add',
+    ytSearch: 'Search YouTube', ytSearchPh: 'song title artist', ytUrl: 'YouTube URL or video ID', add: 'Add',
+    ytSearching: 'Searching YouTube…', ytNoResults: 'No results.', ytNoKey: 'No API key set, so YouTube search results were opened in a new tab. Copy a video URL and paste it above. Add a key in Settings to see results here.',
+    ytQuota: 'Daily search limit reached (YouTube Data API free quota). Pasting URLs still works.', ytKeyBad: 'The API key is invalid or not allowed for this site.', ytErr: 'YouTube search failed: ',
+    ytKey: 'YouTube Data API key (for search)', ytKeyHint: 'Enable YouTube Data API v3 in Google Cloud Console, create an API key and restrict it to this site with an HTTP referrer rule. The key is stored only in this browser. The free quota allows about 100 searches a day.',
     ytHint: 'e.g. https://www.youtube.com/watch?v=xxxx, youtu.be/xxxx or a Shorts URL. Videos that disallow embedding cannot be played.',
     clear: 'Clear all', queueEmpty: 'Queue is empty',
     track: 'Track', artist: 'Artist', search: 'Search',
@@ -327,6 +347,7 @@ const t = (k, ...a) => { const v = (I18N[lang][k] ?? I18N.en[k] ?? k); return ty
 function applyI18n() {
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
   $('#langBtn').textContent = $('#langBtn2').textContent = lang === 'ja' ? 'EN' : 'JP';
   renderQueue(); updateRepeatBtn(); updatePill();
 }
@@ -380,8 +401,10 @@ const BG = {
 const saved = store.get('settings', {});
 if (!('sizeOpt' in saved)) { delete saved.fontSize; delete saved.speed; delete saved.lanes; delete saved.color; delete saved.font; delete saved.dim; }  // 旧レーン版の設定は捨てる
 const settings = Object.assign({
-  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true
+  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true, ytKey: ''
 }, saved);
+// サイト運営者が referrer 制限付きのキーをここに置けば、利用者はキー登録なしで検索できる
+const DEFAULT_YT_KEY = '';
 let queue = store.get('queue', []);   // [{id,title,author}]
 let cur = -1;
 let repeat = store.get('repeat', 'all');
@@ -572,6 +595,53 @@ function pickCandidate(i) {
   renderResults();
 }
 
+/* ===================== YouTube search (Data API v3) ===================== */
+const YT_CACHE_TTL = 24 * 3600 * 1000;
+const decodeEntities = (s) => { const ta = document.createElement('textarea'); ta.innerHTML = s || ''; return ta.value; };
+function ytKey() { return (settings.ytKey || DEFAULT_YT_KEY || '').trim(); }
+async function searchYouTube(q) {
+  q = (q || '').trim(); if (!q) return;
+  const status = $('#ytStatus'), ul = $('#ytResults');
+  const key = ytKey();
+  if (!key) {
+    window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank', 'noopener');
+    status.textContent = t('ytNoKey'); ul.hidden = true; return;
+  }
+  status.textContent = t('ytSearching'); ul.hidden = true;
+  const cacheKey = 'yt.' + q.toLowerCase();
+  let items = store.get(cacheKey, null);
+  if (!items || !items.at || Date.now() - items.at > YT_CACHE_TTL) {
+    const url = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&videoSyndicated=true&maxResults=12&safeSearch=none'
+      + '&q=' + encodeURIComponent(q) + '&key=' + encodeURIComponent(key);
+    let r, data;
+    try { r = await fetch(url); data = await r.json(); }
+    catch (e) { status.textContent = t('ytErr') + e.message; return; }
+    if (!r.ok) {
+      const reason = data && data.error && data.error.errors && data.error.errors[0] && data.error.errors[0].reason;
+      status.textContent = reason === 'quotaExceeded' || reason === 'dailyLimitExceeded' ? t('ytQuota')
+        : (r.status === 400 || r.status === 403) ? t('ytKeyBad') : t('ytErr') + (data && data.error && data.error.message || r.status);
+      return;
+    }
+    items = { at: Date.now(), list: (data.items || []).filter(it => it.id && it.id.videoId).map(it => ({
+      id: it.id.videoId, title: decodeEntities(it.snippet.title), author: decodeEntities(it.snippet.channelTitle),
+    })) };
+    store.set(cacheKey, items);
+  }
+  renderYtResults(items.list);
+  status.textContent = items.list.length ? '' : t('ytNoResults');
+}
+function renderYtResults(list) {
+  const ul = $('#ytResults'); ul.innerHTML = ''; ul.hidden = !list.length;
+  list.forEach(v => {
+    const li = document.createElement('li');
+    li.innerHTML = `<img alt="" width="48" height="27" style="border-radius:4px;object-fit:cover;flex:none"><div class="t"><b></b><span></span></div><button class="x" title="add">＋</button>`;
+    li.querySelector('img').src = `https://i.ytimg.com/vi/${v.id}/default.jpg`;
+    li.querySelector('b').textContent = v.title; li.querySelector('span').textContent = v.author;
+    li.addEventListener('click', () => { queue.push({ id: v.id, title: v.title, author: cleanAuthor(v.author) }); saveQueue(); renderQueue(); toast(t('added')); if (cur < 0) playIndex(queue.length - 1); });
+    ul.appendChild(li);
+  });
+}
+
 /* ===================== queue ===================== */
 function saveQueue() { store.set('queue', queue); }
 function renderQueue() {
@@ -711,6 +781,7 @@ function applySettings() {
   $('#speed').value = settings.flySec; $('#speedVal').textContent = settings.flySec + 's';
   $('#dimRange').value = settings.dim; $('#dimVal').textContent = Math.round(settings.dim * 100) + '%';
   $('#showNow').checked = settings.showNow; $('#skipCredits').checked = settings.skipCredits;
+  $('#ytKey').value = settings.ytKey || '';
   $('#nowline').classList.toggle('hidden', !settings.showNow);
   store.set('settings', settings);
 }
@@ -739,6 +810,9 @@ $('#langBtn').addEventListener('click', toggleLang);
 $('#langBtn2').addEventListener('click', toggleLang);
 
 $('#addBtn').addEventListener('click', () => { if (addUrl($('#urlInput').value)) $('#urlInput').value = ''; });
+$('#ytSearchBtn').addEventListener('click', () => searchYouTube($('#ytq').value));
+$('#ytq').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchYouTube($('#ytq').value); } });
+$('#ytKey').addEventListener('change', e => { settings.ytKey = e.target.value.trim(); applySettings(); });
 $('#urlInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#addBtn').click(); } });
 $('#clearQueue').addEventListener('click', () => { queue = []; cur = -1; saveQueue(); renderQueue(); if (player && ready) player.stopVideo(); setLines([], 'none'); $('#empty').classList.remove('hidden'); $('#hudTitle').textContent = 'Flowrics Web'; $('#hudSub').textContent = ''; });
 
