@@ -5,11 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="description" content="Flowrics Web - YouTube の音楽に合わせて歌詞が弾幕のように流れるプレイヤー">
 <title>Flowrics Web - Danmaku Lyrics for YouTube</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Noto+Sans+JP:wght@300;700;900&family=Noto+Serif+JP:wght@300;700;900&family=M+PLUS+Rounded+1c:wght@300;700;900&family=Zen+Maru+Gothic:wght@300;700;900&family=Zen+Kaku+Gothic+New:wght@300;700;900&family=Shippori+Mincho:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --c1:#F6A656;--c2:#DF4384;--c3:#43B8B1;
   --bg:#0a0a0a;--panel:rgba(14,14,16,.94);--fg:#fff;--muted:#9a9a9a;--line:#2a2a2e;
-  --dm-size:32px;--dim:.35;--dm-font:inherit;
+  --dim:.75;--dm-font:'Klee One',cursive;--dm-color:#fff;--dm-shadow-strong:rgba(0,0,0,.9);--dm-shadow-soft:rgba(0,0,0,.7);--stage-bg:#000;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Hiragino Sans','Noto Sans JP',sans-serif;overflow:hidden;-webkit-text-size-adjust:100%}
@@ -18,17 +21,24 @@ button{cursor:pointer;border:0;background:none}
 a{color:var(--c3)}
 
 /* ---------- stage ---------- */
-#stage{position:fixed;inset:0;overflow:hidden;background:#000}
+#stage{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg)}
 #player-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100vw;height:56.25vw;min-height:100vh;min-width:177.78vh}
 #player{width:100%;height:100%;display:block}
-#dim{position:absolute;inset:0;background:rgba(0,0,0,var(--dim));pointer-events:none}
+#dim{position:absolute;inset:0;background:var(--stage-bg);opacity:var(--dim);pointer-events:none}
 #danmaku{position:absolute;inset:0;overflow:hidden;pointer-events:none}
-.dm{position:absolute;left:100%;top:0;white-space:nowrap;font-family:var(--dm-font);font-size:var(--dm-size);font-weight:700;line-height:1.3;color:#fff;
-  text-shadow:0 0 6px rgba(0,0,0,.95),0 2px 4px rgba(0,0,0,.85),0 0 1px #000;will-change:transform;animation:fly linear forwards}
+/* iOS 版 DanmakuUIView の移植: 文字種ごとにサイズ・太さ・影を変え、ベースラインで揃える */
+.dm{position:absolute;left:100%;top:0;display:flex;align-items:baseline;white-space:nowrap;font-family:var(--dm-font);color:var(--dm-color);line-height:1.25;will-change:transform;animation:fly linear forwards}
+.dm span{display:inline-block;white-space:pre}
+.dm .k{font-weight:900;text-shadow:2px 2px 6px var(--dm-shadow-strong)}                     /* 漢字 */
+.dm .h{font-weight:300;text-shadow:2px 2px 3px var(--dm-shadow-soft)}                       /* ひらがな */
+.dm .kt{font-weight:700;font-style:italic;text-shadow:2px 2px 6px var(--dm-shadow-strong)}  /* カタカナ */
+.dm .lM{font-weight:900;text-shadow:2px 2px 6px var(--dm-shadow-strong)}                    /* 英語: 重要語 */
+.dm .lm{font-weight:300;text-shadow:2px 2px 3px var(--dm-shadow-soft)}                      /* 英語: 機能語 */
+.dm .o{font-weight:400;text-shadow:2px 2px 3px var(--dm-shadow-soft)}                       /* 記号など */
 @keyframes fly{from{transform:translateX(0)}to{transform:translateX(var(--dist))}}
 #danmaku.paused .dm{animation-play-state:paused}
 #nowline{position:absolute;left:0;right:0;bottom:92px;text-align:center;padding:0 16px;pointer-events:none;
-  font-family:var(--dm-font);font-size:calc(var(--dm-size) * .8);font-weight:700;color:#fff;text-shadow:0 0 8px rgba(0,0,0,.95),0 2px 4px rgba(0,0,0,.85);opacity:.95;
+  font-family:var(--dm-font);font-size:26px;font-weight:700;color:var(--dm-color);text-shadow:2px 2px 6px var(--dm-shadow-strong);opacity:.95;
   transition:opacity .2s}
 #nowline.hidden{display:none}
 #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;padding:24px;pointer-events:none}
@@ -99,6 +109,12 @@ a{color:var(--c3)}
 .status{font-size:12px;color:var(--muted);margin:6px 0 10px}
 .hint{font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px}
 .check{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{flex:1;padding:8px 4px;font-size:13px;color:var(--muted);background:rgba(255,255,255,.04)}
+.seg button.active{background:var(--c2);color:#fff}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.swatches button{width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,.3)}
+.swatches button.active{border-color:var(--c2);box-shadow:0 0 0 2px rgba(223,67,132,.4)}
 .val{float:right;color:#ddd;font-size:12px}
 .foot{font-size:11px;color:var(--muted);margin-top:24px;line-height:1.7}
 
@@ -209,37 +225,29 @@ a{color:var(--c3)}
 
   <section class="tab" id="tab-settings">
     <div class="field">
-      <label><span data-i18n="fontSize"></span> <span class="val" id="fontSizeVal"></span></label>
-      <input type="range" id="fontSize" min="16" max="72" step="1">
+      <label data-i18n="fontSize"></label>
+      <div class="seg" id="sizeSeg">
+        <button data-v="random" data-i18n="sizeRandom"></button>
+        <button data-v="medium" data-i18n="sizeMedium"></button>
+        <button data-v="large" data-i18n="sizeLarge"></button>
+        <button data-v="xl" data-i18n="sizeXL"></button>
+      </div>
     </div>
     <div class="field">
-      <label><span data-i18n="speed"></span> <span class="val" id="speedVal"></span></label>
-      <input type="range" id="speed" min="60" max="400" step="10">
+      <label data-i18n="font"></label>
+      <select id="font"></select>
     </div>
     <div class="field">
-      <label><span data-i18n="lanes"></span> <span class="val" id="lanesVal"></span></label>
-      <input type="range" id="lanes" min="3" max="16" step="1">
+      <label data-i18n="bg"></label>
+      <div class="swatches" id="bgSwatches"></div>
     </div>
     <div class="field">
       <label><span data-i18n="dim"></span> <span class="val" id="dimVal"></span></label>
       <input type="range" id="dimRange" min="0" max="0.9" step="0.05">
     </div>
     <div class="field">
-      <label data-i18n="font"></label>
-      <select id="font">
-        <option value="inherit" data-i18n="fontDefault"></option>
-        <option value="'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',serif" data-i18n="fontSerif"></option>
-        <option value="'Rounded Mplus 1c','Hiragino Maru Gothic ProN','Yu Gothic UI',sans-serif" data-i18n="fontRound"></option>
-        <option value="ui-monospace,Menlo,Consolas,monospace" data-i18n="fontMono"></option>
-      </select>
-    </div>
-    <div class="field">
-      <label data-i18n="color"></label>
-      <select id="color">
-        <option value="white" data-i18n="colorWhite"></option>
-        <option value="palette" data-i18n="colorPalette"></option>
-        <option value="rainbow" data-i18n="colorRainbow"></option>
-      </select>
+      <label><span data-i18n="speed"></span> <span class="val" id="speedVal"></span></label>
+      <input type="range" id="speed" min="3" max="15" step="1">
     </div>
     <label class="check"><input type="checkbox" id="showNow"> <span data-i18n="showNow"></span></label>
     <label class="check"><input type="checkbox" id="skipCredits"> <span data-i18n="skipCredits"></span></label>
@@ -265,10 +273,10 @@ const I18N = {
     clear: 'すべて削除', queueEmpty: 'キューは空です',
     track: '曲名', artist: 'アーティスト', search: '検索',
     offset: '歌詞のタイミング調整', lrcManual: 'LRC を直接貼り付け', applyLrc: 'この LRC を使う',
-    fontSize: '文字サイズ', speed: '流れる速さ', lanes: 'レーン数', dim: '背景の暗さ',
-    font: 'フォント', fontDefault: '標準', fontSerif: '明朝', fontRound: '丸ゴシック', fontMono: '等幅',
-    color: '文字色', colorWhite: '白', colorPalette: 'Flowrics カラー', colorRainbow: 'ランダム',
-    showNow: '現在の行を画面下に表示', skipCredits: '作詞・作曲などのクレジット行を除外',
+    fontSize: '文字サイズ', sizeRandom: '混', sizeMedium: '中', sizeLarge: '大', sizeXL: '特大',
+    speed: '流れる速さ(画面を横切る秒数)', dim: '背景の暗さ(動画の透け具合)', font: 'フォント', bg: '背景色',
+    bgBlack: 'ブラック', bgTurquoise: 'ターコイズ', bgOrange: 'オレンジ', bgRed: 'レッド', bgWhite: 'ホワイト', bgBeige: 'ベージュ',
+    showNow: '現在の行を画面下にも表示', skipCredits: '作詞・作曲などのクレジット行を除外',
     keys: 'キーボード: Space 再生/停止 · ← → 5秒シーク · N 次 · P 前 · [ ] 歌詞オフセット',
     credits: '歌詞データ: LRCLIB (lrclib.net) · 動画: YouTube IFrame Player API',
     privacy: 'プライバシー', support: 'サポート',
@@ -293,9 +301,9 @@ const I18N = {
     clear: 'Clear all', queueEmpty: 'Queue is empty',
     track: 'Track', artist: 'Artist', search: 'Search',
     offset: 'Lyrics timing offset', lrcManual: 'Paste LRC manually', applyLrc: 'Use this LRC',
-    fontSize: 'Font size', speed: 'Scroll speed', lanes: 'Lanes', dim: 'Background dim',
-    font: 'Font', fontDefault: 'Default', fontSerif: 'Serif', fontRound: 'Rounded', fontMono: 'Monospace',
-    color: 'Text color', colorWhite: 'White', colorPalette: 'Flowrics palette', colorRainbow: 'Random',
+    fontSize: 'Font size', sizeRandom: 'Mixed', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
+    speed: 'Scroll speed (seconds across the screen)', dim: 'Background dim (video visibility)', font: 'Font', bg: 'Background color',
+    bgBlack: 'Black', bgTurquoise: 'Turquoise', bgOrange: 'Orange', bgRed: 'Red', bgWhite: 'White', bgBeige: 'Beige',
     showNow: 'Show current line at bottom', skipCredits: 'Skip credit lines (lyricist / composer)',
     keys: 'Keys: Space play/pause · ← → seek 5s · N next · P prev · [ ] lyrics offset',
     credits: 'Lyrics: LRCLIB (lrclib.net) · Video: YouTube IFrame Player API',
@@ -342,44 +350,117 @@ function parseId(s) {
 }
 
 /* ===================== state ===================== */
+const FONTS = [   // iOS 版のフォント一覧を Web 等価に写す(Mac/iOS のシステムフォント → 無ければ Google Fonts)
+  ["'Klee One','Klee',cursive", 'クレー'],
+  ["'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif", 'ヒラギノ角ゴ / Noto Sans'],
+  ["'Hiragino Mincho ProN','Noto Serif JP',serif", 'ヒラギノ明朝 / Noto Serif'],
+  ["'Hiragino Maru Gothic ProN','M PLUS Rounded 1c',sans-serif", 'ヒラギノ丸ゴ / M+ Rounded'],
+  ["'YuMincho','Yu Mincho','Noto Serif JP',serif", '游明朝'],
+  ["'YuGothic','Yu Gothic','Noto Sans JP',sans-serif", '游ゴシック'],
+  ["'Tsukushi A Round Gothic','Zen Maru Gothic',sans-serif", '筑紫A丸ゴ / Zen丸ゴ'],
+  ["'Toppan Bunkyu Gothic','Zen Kaku Gothic New',sans-serif", '凸版文久ゴシック / Zen角ゴ'],
+  ["'Toppan Bunkyu Midashi Mincho','Shippori Mincho',serif", '凸版文久見出明 / しっぽり明朝'],
+  ["'Helvetica Neue',Helvetica,Arial,sans-serif", 'Helvetica'],
+  ["Georgia,'Times New Roman',serif", 'Georgia'],
+  ["'Courier New',monospace", 'Courier New'],
+  ["Futura,'Trebuchet MS',sans-serif", 'Futura'],
+  ["'Gill Sans','Gill Sans MT',sans-serif", 'Gill Sans'],
+  ["Didot,'Bodoni MT','Playfair Display',serif", 'Didot'],
+  ["Copperplate,'Copperplate Gothic Light',fantasy", 'Copperplate'],
+];
+// iOS 版 BgColor: 背景色に応じて文字色・影色が決まる
+const BG = {
+  black:     { bg: '#000000', text: '#ffffff', shadow: '0,0,0' },
+  turquoise: { bg: 'rgb(0,191,191)', text: '#ffffff', shadow: '0,0,0' },
+  orange:    { bg: 'rgb(242,140,38)', text: '#ffffff', shadow: '0,0,0' },
+  red:       { bg: 'rgb(191,26,26)', text: '#ffffff', shadow: '0,0,0' },
+  white:     { bg: '#ffffff', text: '#000000', shadow: '211,211,211' },
+  beige:     { bg: 'rgb(245,237,222)', text: 'rgb(51,38,26)', shadow: '128,128,128' },
+};
+const saved = store.get('settings', {});
+if (!('sizeOpt' in saved)) { delete saved.fontSize; delete saved.speed; delete saved.lanes; delete saved.color; delete saved.font; delete saved.dim; }  // 旧レーン版の設定は捨てる
 const settings = Object.assign({
-  fontSize: 32, speed: 150, lanes: 8, dim: 0.35, font: 'inherit', color: 'white', showNow: true, skipCredits: true
-}, store.get('settings', {}));
+  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true
+}, saved);
 let queue = store.get('queue', []);   // [{id,title,author}]
 let cur = -1;
 let repeat = store.get('repeat', 'all');
 let player = null, ready = false;
-let lines = [], idx = 0, lastT = 0, offset = 0, lyricSource = 'none';
+let lines = [], lastT = -1, offset = 0, lyricSource = 'none';
+let fired = new Set();          // 発射済み (行index_レイヤー)
 let candidates = [], searchedFor = null;
-let laneFree = [];
 let seeking = false;
 
-/* ===================== danmaku ===================== */
-const PALETTE = ['#F6A656', '#DF4384', '#43B8B1', '#ffffff', '#ffd166'];
-function laneCount() { return settings.lanes; }
-function spawn(text) {
+/* ===================== danmaku (iOS 版 DanmakuUIView の移植) ===================== */
+// 4 層: プレビュー(−1s, 50%, 0.8x) → メイン → エコー(+2s, 25%, 0.7x) → ゴースト(+5s, 15%, 0.5x)
+const LAYERS = [
+  { id: 'preview', offset: -1.0, opacity: 0.50, scale: 0.8 },
+  { id: 'main',    offset:  0.0, opacity: 1.0,  scale: 1.0 },
+  { id: 'echo',    offset:  2.0, opacity: 0.25, scale: 0.7 },
+  { id: 'ghost',   offset:  5.0, opacity: 0.15, scale: 0.5 },
+];
+const APP_LEAD = 0.4;                               // iOS 版 lyricsOffset = -0.4 (歌詞を 0.4 秒先行)
+const RANDOM_SIZES = [12, 20, 32, 48, 64];          // 「混」
+const SIZE_OPT = { random: 0, medium: 20, large: 32, xl: 64 };
+const SIZE_RATIO = { kanji: 2.0, hira: 1.0, kata: 1.4, 'latin-major': 2.0, 'latin-minor': 1.0, other: 0.9 };
+const TOKEN_CLASS = { kanji: 'k', hira: 'h', kata: 'kt', 'latin-major': 'lM', 'latin-minor': 'lm', other: 'o' };
+const STOP_WORDS = new Set(("i me my we our us you your he him his she her it its they them their a an the is am are was were be been " +
+  "do does did have has had will would shall should can could may might must in on at to for of with by from up about into through " +
+  "and but or so if then than that this not no just very too also as all don't won't can't i'm you're it's we're they're " +
+  "i'll you'll he'll she'll we'll they'll isn't aren't wasn't weren't doesn't didn't").split(' '));
+function charType(ch) {
+  const v = ch.codePointAt(0);
+  if (v >= 0x3040 && v <= 0x309F) return 'hira';
+  if (v >= 0x30A0 && v <= 0x30FF) return 'kata';
+  if ((v >= 0x4E00 && v <= 0x9FFF) || (v >= 0x3400 && v <= 0x4DBF)) return 'kanji';
+  if ((v >= 0x41 && v <= 0x5A) || (v >= 0x61 && v <= 0x7A) || (v >= 0x30 && v <= 0x39)) return 'latin';
+  return 'other';
+}
+const isSpace = c => c === ' ' || c === '　';
+function tokenize(text) {
+  const tokens = []; const chars = Array.from(text); let i = 0;
+  while (i < chars.length) {
+    const ch = chars[i];
+    if (isSpace(ch)) { if (tokens.length) tokens[tokens.length - 1].text += ch; i++; continue; }
+    const type = charType(ch);
+    if (type === 'latin') {
+      let word = '';
+      while (i < chars.length && (charType(chars[i]) === 'latin' || chars[i] === "'")) word += chars[i++];
+      while (i < chars.length && isSpace(chars[i])) word += chars[i++];
+      const minor = STOP_WORDS.has(word.trim().toLowerCase());
+      tokens.push({ type: minor ? 'latin-minor' : 'latin-major', text: word });
+    } else {
+      let group = ch; i++;
+      while (i < chars.length) {
+        const nc = chars[i];
+        if (isSpace(nc)) { group += nc; i++; continue; }
+        if (charType(nc) === type) { group += nc; i++; } else break;
+      }
+      tokens.push({ type, text: group });
+    }
+  }
+  return tokens;
+}
+function spawn(text, opacity = 1, scale = 1) {
   const box = $('#danmaku'); const W = box.clientWidth, H = box.clientHeight;
-  const el = document.createElement('div'); el.className = 'dm'; el.textContent = text;
-  if (settings.color === 'palette') el.style.color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-  else if (settings.color === 'rainbow') el.style.color = `hsl(${Math.floor(Math.random() * 360)} 90% 75%)`;
+  const fixed = SIZE_OPT[settings.sizeOpt] || 0;
+  const base = (fixed > 0 ? fixed : RANDOM_SIZES[Math.floor(Math.random() * RANDOM_SIZES.length)]) * scale;
+  const el = document.createElement('div'); el.className = 'dm'; el.style.opacity = opacity;
+  for (const tok of tokenize(text)) {
+    const sp = document.createElement('span'); sp.className = TOKEN_CLASS[tok.type]; sp.textContent = tok.text;
+    sp.style.fontSize = (base * SIZE_RATIO[tok.type]).toFixed(1) + 'px';
+    el.appendChild(sp);
+  }
+  const totalH = base * 2.5, bottomInset = ($('#controls').offsetHeight || 90);
+  const maxY = Math.max(H - totalH - bottomInset - 20, 10);
+  el.style.top = (10 + Math.random() * (maxY - 10)) + 'px';
   box.appendChild(el);
   const w = el.offsetWidth;
-  const speed = settings.speed;                // px per second
-  const dur = (W + w) / speed;
-  const now = performance.now();
-  // choose lane: first free lane, else the one that frees soonest
-  const n = laneCount(); if (laneFree.length !== n) laneFree = new Array(n).fill(0);
-  let lane = laneFree.findIndex(f => f <= now);
-  if (lane < 0) { lane = 0; for (let i = 1; i < n; i++) if (laneFree[i] < laneFree[lane]) lane = i; }
-  laneFree[lane] = now + (w / speed) * 1000 + 250;
-  const top = H * 0.08, usable = H * 0.72;
-  const laneH = Math.min(settings.fontSize * 1.45, usable / n);
-  el.style.top = (top + lane * laneH) + 'px';
-  el.style.setProperty('--dist', `-${W + w}px`);
-  el.style.animationDuration = dur + 's';
+  el.style.setProperty('--dist', `-${W + w + 20}px`);
+  el.style.animationDuration = settings.flySec + 's';
   el.addEventListener('animationend', () => el.remove());
 }
-function clearDanmaku() { $('#danmaku').innerHTML = ''; laneFree = []; }
+function clearDanmaku() { $('#danmaku').innerHTML = ''; fired.clear(); }
 function setNow(text) { $('#nowline').textContent = text || ''; }
 
 /* ===================== LRC ===================== */
@@ -398,8 +479,7 @@ function parseLRC(text) {
   return out;
 }
 function setLines(newLines, source) {
-  lines = newLines; lyricSource = source; idx = 0; clearDanmaku(); setNow('');
-  if (player && ready) { const cT = player.getCurrentTime() + offset; idx = lines.findIndex(l => l.t > cT); if (idx < 0) idx = lines.length; }
+  lines = newLines; lyricSource = source; clearDanmaku(); setNow(''); lastT = -1;
   updatePill();
 }
 function updatePill() {
@@ -589,33 +669,47 @@ function onError(e) {
   if (queue.length > 1) setTimeout(() => { if (cur >= 0) nextTrack(true); }, 1800);
 }
 
-/* ===================== sync loop ===================== */
+/* ===================== sync loop (iOS 版 tickSynced の移植) ===================== */
 function tick() {
   requestAnimationFrame(tick);
   if (!ready || !player.getCurrentTime) return;
   const raw = player.getCurrentTime() || 0, dur = player.getDuration() || 0;
   if (!seeking) { $('#seek').value = dur ? Math.round(raw / dur * 1000) : 0; }
   $('#time').textContent = `${fmt(raw)} / ${fmt(dur)}`;
-  const tt = raw + offset;
-  if (tt < lastT - 0.8) { idx = lines.findIndex(l => l.t >= tt); if (idx < 0) idx = lines.length; clearDanmaku(); setNow(''); }
-  while (idx < lines.length && lines[idx].t <= tt) {
-    const L = lines[idx++];
-    if (L.t >= tt - 1.2 && player.getPlayerState() === YT.PlayerState.PLAYING) spawn(L.text);
-    setNow(L.text);
-  }
+  if (player.getPlayerState() !== YT.PlayerState.PLAYING) return;   // 停止中は発射しない(アニメーションは CSS 側で一時停止)
+  const tt = raw + offset + APP_LEAD;
+  if (lastT >= 0 && Math.abs(tt - lastT) > 2) { clearDanmaku(); setNow(''); }   // シーク検知 → 全消去
   lastT = tt;
+  for (let i = 0; i < lines.length; i++) {
+    const L = lines[i];
+    if (L.t + LAYERS[0].offset > tt) break;                         // 以降の行はまだ先
+    if (L.t + LAYERS[LAYERS.length - 1].offset + 1 < tt) continue;  // 全レイヤー発射済みの行
+    for (const ly of LAYERS) {
+      const trig = L.t + ly.offset;
+      if (tt < trig || tt >= trig + 1.0) continue;
+      const key = i + '_' + ly.id;
+      if (fired.has(key)) continue;
+      fired.add(key);
+      spawn(L.text, ly.opacity, ly.scale);
+      if (ly.id === 'main') setNow(L.text);
+    }
+  }
 }
 
 /* ===================== UI wiring ===================== */
 function applySettings() {
-  document.documentElement.style.setProperty('--dm-size', settings.fontSize + 'px');
-  document.documentElement.style.setProperty('--dim', settings.dim);
-  document.documentElement.style.setProperty('--dm-font', settings.font);
-  $('#fontSize').value = settings.fontSize; $('#fontSizeVal').textContent = settings.fontSize + 'px';
-  $('#speed').value = settings.speed; $('#speedVal').textContent = settings.speed + ' px/s';
-  $('#lanes').value = settings.lanes; $('#lanesVal').textContent = settings.lanes;
+  const root = document.documentElement.style, bg = BG[settings.bg] || BG.black;
+  root.setProperty('--dim', settings.dim);
+  root.setProperty('--dm-font', settings.font);
+  root.setProperty('--stage-bg', bg.bg);
+  root.setProperty('--dm-color', bg.text);
+  root.setProperty('--dm-shadow-strong', `rgba(${bg.shadow},.9)`);
+  root.setProperty('--dm-shadow-soft', `rgba(${bg.shadow},.7)`);
+  $$('#sizeSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === settings.sizeOpt));
+  $$('#bgSwatches button').forEach(b => b.classList.toggle('active', b.dataset.v === settings.bg));
+  $('#font').value = settings.font;
+  $('#speed').value = settings.flySec; $('#speedVal').textContent = settings.flySec + 's';
   $('#dimRange').value = settings.dim; $('#dimVal').textContent = Math.round(settings.dim * 100) + '%';
-  $('#font').value = settings.font; $('#color').value = settings.color;
   $('#showNow').checked = settings.showNow; $('#skipCredits').checked = settings.skipCredits;
   $('#nowline').classList.toggle('hidden', !settings.showNow);
   store.set('settings', settings);
@@ -623,12 +717,14 @@ function applySettings() {
 function bind(id, key, parse, after) {
   $('#' + id).addEventListener('input', e => { settings[key] = parse(e.target); applySettings(); if (after) after(); });
 }
-bind('fontSize', 'fontSize', e => +e.value);
-bind('speed', 'speed', e => +e.value);
-bind('lanes', 'lanes', e => +e.value, () => { laneFree = []; });
+// フォント一覧・背景スウォッチ・サイズ切替を生成
+FONTS.forEach(([v, label]) => { const o = document.createElement('option'); o.value = v; o.textContent = label; o.style.fontFamily = v; $('#font').appendChild(o); });
+Object.entries(BG).forEach(([k, v]) => { const b = document.createElement('button'); b.dataset.v = k; b.style.background = v.bg; b.addEventListener('click', () => { settings.bg = k; applySettings(); }); $('#bgSwatches').appendChild(b); });
+$$('#sizeSeg button').forEach(b => b.addEventListener('click', () => { settings.sizeOpt = b.dataset.v; applySettings(); }));
+$$('#bgSwatches button').forEach(b => { b.title = t('bg' + b.dataset.v[0].toUpperCase() + b.dataset.v.slice(1)); });
+bind('speed', 'flySec', e => +e.value);
 bind('dimRange', 'dim', e => +e.value);
 bind('font', 'font', e => e.value);
-bind('color', 'color', e => e.value);
 bind('showNow', 'showNow', e => e.checked);
 bind('skipCredits', 'skipCredits', e => e.checked, () => { const txt = $('#lrcText').value; if (txt) setLines(parseLRC(txt), lyricSource === 'none' ? 'manual' : lyricSource); });
 
@@ -682,7 +778,6 @@ document.addEventListener('keydown', e => {
   else if (e.key === '[') setOffset(offset - 0.1);
   else if (e.key === ']') setOffset(offset + 0.1);
 });
-window.addEventListener('resize', () => { laneFree = []; });
 
 /* ===================== boot ===================== */
 (function boot() {
