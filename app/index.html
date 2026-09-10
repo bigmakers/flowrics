@@ -192,15 +192,22 @@ a{color:var(--c3)}
     <div class="field">
       <label data-i18n="ytUrl"></label>
       <div class="inline">
-        <input type="url" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+        <input type="url" id="urlInput" placeholder="https://www.youtube.com/watch?v=... / playlist?list=..." autocomplete="off">
         <button class="btn primary" id="addBtn" data-i18n="add"></button>
       </div>
       <div class="hint" data-i18n="ytHint"></div>
     </div>
     <ul class="list" id="queueList"></ul>
     <div class="row" style="margin-top:10px">
-      <span class="spacer"></span>
+      <div class="inline" style="flex:1">
+        <input type="text" id="plName" autocomplete="off" data-i18n-ph="plNamePh">
+        <button class="btn" id="savePl" data-i18n="plSave"></button>
+      </div>
       <button class="btn small" id="clearQueue" data-i18n="clear"></button>
+    </div>
+    <div class="field" style="margin-top:18px">
+      <label data-i18n="plSaved"></label>
+      <ul class="list" id="plList"></ul>
     </div>
   </section>
 
@@ -282,11 +289,14 @@ const I18N = {
   ja: {
     empty: '右上の ☰ から YouTube の URL を追加すると、曲に合わせて歌詞が弾幕のように流れます。',
     share: '共有', tabQueue: 'キュー', tabLyrics: '歌詞', tabSettings: '設定',
-    ytSearch: 'YouTube を検索', ytSearchPh: '曲名 アーティスト', ytUrl: 'YouTube の URL または動画ID', add: '追加',
+    ytSearch: 'YouTube を検索(設定タブで API キーを登録した場合)', ytSearchPh: '曲名 アーティスト', ytUrl: 'YouTube の URL(動画 / プレイリスト)または動画ID', add: '追加',
+    plImporting: 'プレイリストを読み込んでいます…', plImported: (n) => `プレイリストから ${n} 曲を追加しました`, plImportFail: 'プレイリストを読み込めませんでした(非公開、または存在しない可能性があります)。',
+    plNamePh: 'プレイリスト名', plSave: '保存', plSaved: '保存したプレイリスト', plNone: 'まだありません。キューに曲を入れて名前を付けて保存すると、ここから呼び出せます。',
+    plSavedToast: (n) => `「${n}」を保存しました`, plLoaded: (n) => `「${n}」を読み込みました`, plCount: (n) => `${n} 曲`, plNeedName: 'プレイリスト名を入力してください', plEmpty: 'キューが空です',
     ytSearching: 'YouTube を検索中…', ytNoResults: '見つかりませんでした。', ytNoKey: 'API キーが未設定なので YouTube の検索結果を新しいタブで開きました。動画の URL をコピーして上の欄に貼り付けてください。設定タブでキーを登録するとここに結果が出ます。',
     ytQuota: '今日の検索回数の上限に達しました(YouTube Data API の無料枠)。URL の貼り付けは引き続き使えます。', ytKeyBad: 'API キーが無効か、このサイトからの利用が許可されていません。', ytErr: 'YouTube 検索に失敗しました: ',
     ytKey: 'YouTube Data API キー(検索に使用)', ytKeyHint: 'Google Cloud Console で YouTube Data API v3 を有効にして API キーを作成し、「HTTP リファラー」でこのサイトのドメインに制限してください。キーはこのブラウザにだけ保存されます。無料枠は 1 日およそ 100 回の検索です。',
-    ytHint: '例: https://www.youtube.com/watch?v=xxxx / youtu.be/xxxx / Shorts の URL も使えます。埋め込みが許可されていない動画は再生できません。',
+    ytHint: '動画の URL(watch / youtu.be / Shorts)を貼ると 1 曲、プレイリストの URL(list=…)を貼ると全曲をキューに追加します。埋め込みが許可されていない動画は再生できません。',
     clear: 'すべて削除', queueEmpty: 'キューは空です',
     track: '曲名', artist: 'アーティスト', search: '検索',
     offset: '歌詞のタイミング調整', lrcManual: 'LRC を直接貼り付け', applyLrc: 'この LRC を使う',
@@ -313,11 +323,14 @@ const I18N = {
   en: {
     empty: 'Open ☰ (top right) and add a YouTube URL. Lyrics will flow across the screen in sync with the music.',
     share: 'Share', tabQueue: 'Queue', tabLyrics: 'Lyrics', tabSettings: 'Settings',
-    ytSearch: 'Search YouTube', ytSearchPh: 'song title artist', ytUrl: 'YouTube URL or video ID', add: 'Add',
+    ytSearch: 'Search YouTube (with your API key from Settings)', ytSearchPh: 'song title artist', ytUrl: 'YouTube URL (video / playlist) or video ID', add: 'Add',
+    plImporting: 'Loading playlist…', plImported: (n) => `Added ${n} videos from the playlist`, plImportFail: 'Could not load the playlist (it may be private or missing).',
+    plNamePh: 'Playlist name', plSave: 'Save', plSaved: 'Saved playlists', plNone: 'None yet. Fill the queue, give it a name and save it to recall it here.',
+    plSavedToast: (n) => `Saved "${n}"`, plLoaded: (n) => `Loaded "${n}"`, plCount: (n) => `${n} videos`, plNeedName: 'Enter a playlist name', plEmpty: 'The queue is empty',
     ytSearching: 'Searching YouTube…', ytNoResults: 'No results.', ytNoKey: 'No API key set, so YouTube search results were opened in a new tab. Copy a video URL and paste it above. Add a key in Settings to see results here.',
     ytQuota: 'Daily search limit reached (YouTube Data API free quota). Pasting URLs still works.', ytKeyBad: 'The API key is invalid or not allowed for this site.', ytErr: 'YouTube search failed: ',
     ytKey: 'YouTube Data API key (for search)', ytKeyHint: 'Enable YouTube Data API v3 in Google Cloud Console, create an API key and restrict it to this site with an HTTP referrer rule. The key is stored only in this browser. The free quota allows about 100 searches a day.',
-    ytHint: 'e.g. https://www.youtube.com/watch?v=xxxx, youtu.be/xxxx or a Shorts URL. Videos that disallow embedding cannot be played.',
+    ytHint: 'Paste a video URL (watch / youtu.be / Shorts) to add one video, or a playlist URL (list=…) to add all of its videos. Videos that disallow embedding cannot be played.',
     clear: 'Clear all', queueEmpty: 'Queue is empty',
     track: 'Track', artist: 'Artist', search: 'Search',
     offset: 'Lyrics timing offset', lrcManual: 'Paste LRC manually', applyLrc: 'Use this LRC',
@@ -349,7 +362,7 @@ function applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
   $('#langBtn').textContent = $('#langBtn2').textContent = lang === 'ja' ? 'EN' : 'JP';
-  renderQueue(); updateRepeatBtn(); updatePill();
+  renderQueue(); renderPlaylists(); updateRepeatBtn(); updatePill();
 }
 
 /* ===================== helpers ===================== */
@@ -362,6 +375,7 @@ const store = {
 const fmt = s => { s = Math.max(0, Math.floor(s || 0)); const m = Math.floor(s / 60), r = s % 60; return `${m}:${r < 10 ? '0' : ''}${r}`; };
 let toastTimer;
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600); }
+function parseListId(s) { const m = (s || '').match(/[?&]list=([A-Za-z0-9_-]{10,})/); return m ? m[1] : null; }
 function parseId(s) {
   s = (s || '').trim();
   const m = s.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/|\/v\/)([A-Za-z0-9_-]{11})/);
@@ -406,6 +420,8 @@ const settings = Object.assign({
 // サイト運営者が referrer 制限付きのキーをここに置けば、利用者はキー登録なしで検索できる
 const DEFAULT_YT_KEY = '';
 let queue = store.get('queue', []);   // [{id,title,author}]
+let playlists = store.get('playlists', []);   // [{name, items:[{id,title,author}], at}]
+let importing = null;   // YouTube プレイリスト取り込み中 {list, timer, wasPlaying, pos}
 let cur = -1;
 let repeat = store.get('repeat', 'all');
 let player = null, ready = false;
@@ -658,12 +674,83 @@ function renderQueue() {
     ul.appendChild(li);
   });
 }
+// ---- タイトル取得 (YouTube oEmbed, CORS 可・キー不要) ----
+const titleQueue = []; let titleBusy = 0;
+function fetchTitles(items) { items.forEach(it => { if (!it.title && !titleQueue.includes(it)) titleQueue.push(it); }); pumpTitles(); }
+function pumpTitles() {
+  while (titleBusy < 3 && titleQueue.length) {
+    const it = titleQueue.shift(); titleBusy++;
+    fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + it.id))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && d.title && !it.title) { it.title = d.title; it.author = cleanAuthor(d.author_name); saveQueue(); renderQueue(); if (queue[cur] === it) { $('#hudTitle').textContent = it.title; $('#hudSub').textContent = it.author; } } })
+      .catch(() => {})
+      .finally(() => { titleBusy--; pumpTitles(); });
+  }
+}
+// ---- YouTube プレイリスト取り込み (IFrame API の cuePlaylist → getPlaylist、キー不要) ----
+function importPlaylist(listId) {
+  if (!player || !ready || importing) return false;
+  const wasPlaying = player.getPlayerState() === YT.PlayerState.PLAYING;
+  importing = { list: listId, wasPlaying, pos: player.getCurrentTime() || 0, tries: 0, timer: setTimeout(() => finishImport(null), 15000) };
+  toast(t('plImporting'));
+  player.cuePlaylist({ listType: 'playlist', list: listId });
+  return true;
+}
+function finishImport(ids) {
+  if (!importing) return;
+  if (ids && !ids.length && importing.tries++ < 10) { setTimeout(() => finishImport(player.getPlaylist() || []), 200); return; }   // getPlaylist が埋まるまで少し待つ
+  const imp = importing; importing = null; clearTimeout(imp.timer);
+  if (!ids || !ids.length) {
+    toast(t('plImportFail'));
+    if (cur >= 0) { if (imp.wasPlaying) player.loadVideoById({ videoId: queue[cur].id, startSeconds: imp.pos }); else player.cueVideoById(queue[cur].id); }
+    else player.stopVideo();
+    return;
+  }
+  const start = queue.length;
+  const items = ids.map(id => ({ id })); queue.push(...items); saveQueue(); renderQueue(); fetchTitles(items);
+  toast(t('plImported', ids.length));
+  if (cur >= 0 && imp.wasPlaying) player.loadVideoById({ videoId: queue[cur].id, startSeconds: imp.pos });   // 再生中だった曲に戻る
+  else playIndex(start);
+}
 function addUrl(s) {
+  const listId = parseListId(s);
+  if (listId) return importPlaylist(listId);
   const id = parseId(s);
   if (!id) { toast(t('invalidUrl')); return false; }
-  queue.push({ id }); saveQueue(); renderQueue(); toast(t('added'));
+  const item = { id }; queue.push(item); saveQueue(); renderQueue(); fetchTitles([item]); toast(t('added'));
   if (cur < 0) playIndex(queue.length - 1);
   return true;
+}
+// ---- 保存したプレイリスト (localStorage) ----
+function savePlaylists() { store.set('playlists', playlists); }
+function renderPlaylists() {
+  const ul = $('#plList'); ul.innerHTML = '';
+  if (!playlists.length) { ul.innerHTML = `<li class="empty-note">${t('plNone')}</li>`; return; }
+  playlists.forEach((pl, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<img alt="" width="48" height="27" style="border-radius:4px;object-fit:cover;flex:none"><div class="t"><b></b><span></span></div><button class="x" title="delete">✕</button>`;
+    li.querySelector('img').src = pl.items[0] ? `https://i.ytimg.com/vi/${pl.items[0].id}/default.jpg` : '';
+    li.querySelector('b').textContent = pl.name; li.querySelector('span').textContent = t('plCount', pl.items.length);
+    li.addEventListener('click', e => { if (e.target.classList.contains('x')) return; loadPlaylist(i); });
+    li.querySelector('.x').addEventListener('click', () => { playlists.splice(i, 1); savePlaylists(); renderPlaylists(); });
+    ul.appendChild(li);
+  });
+}
+function savePlaylist(name) {
+  name = (name || '').trim();
+  if (!name) { toast(t('plNeedName')); return false; }
+  if (!queue.length) { toast(t('plEmpty')); return false; }
+  const items = queue.map(q => ({ id: q.id, title: q.title, author: q.author }));
+  const idx = playlists.findIndex(p => p.name === name);
+  const entry = { name, items, at: Date.now() };
+  if (idx >= 0) playlists[idx] = entry; else playlists.unshift(entry);
+  savePlaylists(); renderPlaylists(); toast(t('plSavedToast', name)); return true;
+}
+function loadPlaylist(i) {
+  const pl = playlists[i]; if (!pl) return;
+  queue = pl.items.map(x => ({ ...x })); cur = -1; saveQueue(); renderQueue(); fetchTitles(queue);
+  toast(t('plLoaded', pl.name)); $('#plName').value = pl.name;
+  if (queue.length) playIndex(0);
 }
 function removeAt(i) {
   queue.splice(i, 1);
@@ -710,7 +797,9 @@ function onYouTubeIframeAPIReady() {
 window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
 function onReady() {
   ready = true;
+  fetchTitles(queue);
   if (queue.length) playIndex(0, false);
+  if (window.__bootList) importPlaylist(window.__bootList);
   requestAnimationFrame(tick);
 }
 function onStateChange(e) {
@@ -718,6 +807,8 @@ function onStateChange(e) {
   const playing = e.data === S.PLAYING;
   $('#play').textContent = playing ? '❚❚' : '▶';
   $('#danmaku').classList.toggle('paused', !playing);
+  if (importing && e.data === S.CUED) { finishImport(player.getPlaylist() || []); return; }
+  if (importing) return;
   const vd = player.getVideoData ? player.getVideoData() : null;
   if (vd && vd.video_id && cur >= 0 && queue[cur] && queue[cur].id === vd.video_id) {
     if (vd.title && queue[cur].title !== vd.title) { queue[cur].title = vd.title; queue[cur].author = cleanAuthor(vd.author); saveQueue(); renderQueue(); $('#hudTitle').textContent = vd.title; $('#hudSub').textContent = queue[cur].author; document.title = vd.title + ' - Flowrics Web'; }
@@ -735,6 +826,7 @@ function onStateChange(e) {
 }
 function onError(e) {
   const code = e.data;
+  if (importing) { finishImport(null); return; }
   toast(code === 101 || code === 150 ? t('embedErr') : code === 100 ? t('notFoundErr') : t('playErr'));
   if (queue.length > 1) setTimeout(() => { if (cur >= 0) nextTrack(true); }, 1800);
 }
@@ -810,6 +902,8 @@ $('#langBtn').addEventListener('click', toggleLang);
 $('#langBtn2').addEventListener('click', toggleLang);
 
 $('#addBtn').addEventListener('click', () => { if (addUrl($('#urlInput').value)) $('#urlInput').value = ''; });
+$('#savePl').addEventListener('click', () => savePlaylist($('#plName').value));
+$('#plName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); savePlaylist($('#plName').value); } });
 $('#ytSearchBtn').addEventListener('click', () => searchYouTube($('#ytq').value));
 $('#ytq').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchYouTube($('#ytq').value); } });
 $('#ytKey').addEventListener('change', e => { settings.ytKey = e.target.value.trim(); applySettings(); });
@@ -859,6 +953,7 @@ document.addEventListener('keydown', e => {
   const p = new URLSearchParams(location.search);
   const ids = (p.get('v') || p.get('ids') || '').split(',').map(parseId).filter(Boolean);
   if (ids.length) { queue = ids.map(id => ({ id })); saveQueue(); }
+  window.__bootList = p.get('list');
   applySettings(); applyI18n();
   const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
 })();
