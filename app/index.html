@@ -73,6 +73,7 @@ a{color:var(--c3)}
 #controls{position:fixed;left:0;right:0;bottom:0;padding:10px 12px max(12px,env(safe-area-inset-bottom));z-index:5;
   background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.75));display:flex;flex-direction:column;gap:6px}
 #seek{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:rgba(255,255,255,.25);outline:0}
+#seek.marked{background:var(--seek-marks,rgba(255,255,255,.25))}
 #seek::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--c1)}
 #seek::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:var(--c1)}
 .row{display:flex;align-items:center;gap:8px}
@@ -274,6 +275,8 @@ a{color:var(--c3)}
       <label><span data-i18n="speed"></span> <span class="val" id="speedVal"></span></label>
       <input type="range" id="speed" min="3" max="15" step="1">
     </div>
+    <label class="check"><input type="checkbox" id="chorusBoost"> <span data-i18n="chorusBoost"></span></label>
+    <div class="hint" style="margin:-4px 0 12px" data-i18n="chorusHint"></div>
     <label class="check"><input type="checkbox" id="showNow"> <span data-i18n="showNow"></span></label>
     <label class="check"><input type="checkbox" id="skipCredits"> <span data-i18n="skipCredits"></span></label>
     <div class="hint" data-i18n="keys"></div>
@@ -305,6 +308,7 @@ const I18N = {
     motion: '歌詞に合わせて動く', motionOff: 'オフ', motionSoft: '控えめ', motionStrong: '強め', motionHint: '歌詞の行が始まる瞬間に文字が弾みます。「強め」では画面全体も一瞬脈打ちます。',
     speed: '流れる速さ(画面を横切る秒数)', dim: '背景の暗さ(動画の透け具合)', font: 'フォント', bg: '背景色',
     bgBlack: 'ブラック', bgTurquoise: 'ターコイズ', bgOrange: 'オレンジ', bgRed: 'レッド', bgWhite: 'ホワイト', bgBeige: 'ベージュ',
+    chorusBoost: 'サビを強調(文字を一段大きく・動きを強め)', chorusHint: '歌詞の繰り返しからサビの区間を推定します。判定した区間はシークバーにピンクで表示されます。繰り返しの少ない曲では判定されないことがあります。',
     showNow: '現在の行を画面下にも表示', skipCredits: '作詞・作曲などのクレジット行を除外',
     keys: 'キーボード: Space 再生/停止 · ← → 5秒シーク · N 次 · P 前 · [ ] 歌詞オフセット',
     credits: '歌詞データ: LRCLIB (lrclib.net) · 動画: YouTube IFrame Player API',
@@ -337,6 +341,7 @@ const I18N = {
     motion: 'Move with the lyrics', motionOff: 'Off', motionSoft: 'Subtle', motionStrong: 'Strong', motionHint: 'Characters bounce in as each lyric line starts. "Strong" also pulses the whole screen.',
     speed: 'Scroll speed (seconds across the screen)', dim: 'Background dim (video visibility)', font: 'Font', bg: 'Background color',
     bgBlack: 'Black', bgTurquoise: 'Turquoise', bgOrange: 'Orange', bgRed: 'Red', bgWhite: 'White', bgBeige: 'Beige',
+    chorusBoost: 'Emphasize the chorus (bigger text, strong motion)', chorusHint: 'The chorus is estimated from repeated lyric lines and shown in pink on the seek bar. Songs with little repetition may not get one.',
     showNow: 'Show current line at bottom', skipCredits: 'Skip credit lines (lyricist / composer)',
     keys: 'Keys: Space play/pause · ← → seek 5s · N next · P prev · [ ] lyrics offset',
     credits: 'Lyrics: LRCLIB (lrclib.net) · Video: YouTube IFrame Player API',
@@ -415,7 +420,7 @@ const BG = {
 const saved = store.get('settings', {});
 if (!('sizeOpt' in saved)) { delete saved.fontSize; delete saved.speed; delete saved.lanes; delete saved.color; delete saved.font; delete saved.dim; }  // 旧レーン版の設定は捨てる
 const settings = Object.assign({
-  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true, motion: 'soft'
+  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true, motion: 'soft', chorusBoost: true
 }, saved);
 delete settings.ytKey;
 let queue = store.get('queue', []);   // [{id,title,author}]
@@ -426,6 +431,8 @@ let repeat = store.get('repeat', 'all');
 let player = null, ready = false;
 let lines = [], lastT = -1, offset = 0, lyricSource = 'none';
 let fired = new Set();          // 発射済み (行index_レイヤー)
+let chorus = [];                // 推定したサビ区間 [{start,end}]
+let seekMarked = false;
 let candidates = [], searchedFor = null;
 let seeking = false;
 
@@ -479,13 +486,16 @@ function tokenize(text) {
   }
   return tokens;
 }
+let chorusNow = false;   // 現在サビ区間か(tick で更新)
 function spawn(text, opacity = 1, scale = 1, layerId = 'main') {
   const box = $('#danmaku'); const W = box.clientWidth, H = box.clientHeight;
   const fixed = SIZE_OPT[settings.sizeOpt] || 0;
-  const base = (fixed > 0 ? fixed : RANDOM_SIZES[Math.floor(Math.random() * RANDOM_SIZES.length)]) * scale;
+  const boost = chorusNow ? 1.5 : 1;   // サビ: 文字サイズを一段(12→20→32→48→64 相当)上げる
+  const base = (fixed > 0 ? fixed : RANDOM_SIZES[Math.floor(Math.random() * RANDOM_SIZES.length)]) * scale * boost;
   const el = document.createElement('div'); el.className = 'dm'; el.style.opacity = opacity;
+  if (chorusNow) el.classList.add('chorus');
   const pop = settings.motion !== 'off' && layerId === 'main';
-  if (pop) { el.classList.add('pop'); if (settings.motion === 'strong') el.classList.add('strong'); }
+  if (pop) { el.classList.add('pop'); if (settings.motion === 'strong' || chorusNow) el.classList.add('strong'); }
   let n = 0;
   for (const tok of tokenize(text)) {
     const sp = document.createElement('span'); sp.className = TOKEN_CLASS[tok.type]; sp.textContent = tok.text;
@@ -493,7 +503,7 @@ function spawn(text, opacity = 1, scale = 1, layerId = 'main') {
     if (pop) sp.style.animationDelay = (n++ * 45) + 'ms';   // 文字グループごとに順に弾む
     el.appendChild(sp);
   }
-  if (pop && settings.motion === 'strong') retrigger($('#stage'), 'beat');
+  if (pop && (settings.motion === 'strong' || chorusNow)) retrigger($('#stage'), 'beat');
   const totalH = base * 2.5, bottomInset = ($('#controls').offsetHeight || 90);
   const maxY = Math.max(H - totalH - bottomInset - 20, 10);
   el.style.top = (10 + Math.random() * (maxY - 10)) + 'px';
@@ -506,6 +516,43 @@ function spawn(text, opacity = 1, scale = 1, layerId = 'main') {
 function retrigger(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 function clearDanmaku() { $('#danmaku').innerHTML = ''; fired.clear(); }
 function setNow(text) { $('#nowline').textContent = text || ''; }
+
+/* ===================== サビ推定 (歌詞の繰り返しから) ===================== */
+const normLine = s => s.replace(/[\s　、。,.!！?？「」『』()（）…・~〜-]/g, '').toLowerCase();
+function detectChorus(ls) {
+  if (ls.length < 8) return [];
+  const keys = ls.map(l => normLine(l.text));
+  const cnt = {}; keys.forEach(k => { if (k.length >= 3) cnt[k] = (cnt[k] || 0) + 1; });
+  const rep = keys.map(k => (cnt[k] || 0) >= 2);
+  // 繰り返し行が連続する区間をブロックにする(1 行だけの途切れはつなぐ)
+  const blocks = []; let i = 0;
+  while (i < ls.length) {
+    if (!rep[i]) { i++; continue; }
+    let j = i;
+    while (j < ls.length && (rep[j] || (j + 1 < ls.length && rep[j + 1]))) j++;
+    blocks.push([i, j]); i = j;
+  }
+  if (blocks.length < 2) return [];
+  const lineDur = (idx) => (idx + 1 < ls.length ? ls[idx + 1].t - ls[idx].t : 5);
+  const secs = blocks.map(([a, b]) => ({ start: ls[a].t, end: ls[b - 1].t + Math.min(lineDur(b - 1), 8), lines: b - a }));
+  // ほぼ全編が繰り返しならサビとは言えない
+  const total = secs.reduce((acc, x) => acc + (x.end - x.start), 0);
+  const span = ls[ls.length - 1].t - ls[0].t + 5;
+  if (total > span * 0.7) return [];
+  return secs;
+}
+const inChorus = (t) => settings.chorusBoost && chorus.some(c => t >= c.start && t < c.end);
+function markSeek(dur) {
+  const el = $('#seek');
+  if (!settings.chorusBoost || !chorus.length || !dur) { el.classList.remove('marked'); el.style.removeProperty('--seek-marks'); return; }
+  const base = 'rgba(255,255,255,.25)', hi = 'rgba(223,67,132,.95)';
+  const stops = [];
+  let pos = 0;
+  chorus.forEach(c => { const a = Math.max(0, c.start / dur * 100), b = Math.min(100, c.end / dur * 100); if (b <= a) return; stops.push(`${base} ${pos}%`, `${base} ${a}%`, `${hi} ${a}%`, `${hi} ${b}%`); pos = b; });
+  stops.push(`${base} ${pos}%`, `${base} 100%`);
+  el.style.setProperty('--seek-marks', `linear-gradient(90deg, ${stops.join(',')})`);
+  el.classList.add('marked');
+}
 
 /* ===================== LRC ===================== */
 const CREDIT_RE = /^(作词|作曲|编曲|作詞|編曲|词|曲|歌|唱|监制|製作|制作|Lyrics?|Lyricist|Composer|Composed|Arranger?|Arranged|Producer|Produced|Written|Music|Vocals?)\s*(by)?\s*[:：]/i;
@@ -524,6 +571,7 @@ function parseLRC(text) {
 }
 function setLines(newLines, source) {
   lines = newLines; lyricSource = source; clearDanmaku(); setNow(''); lastT = -1;
+  chorus = detectChorus(lines); seekMarked = false; markSeek(player && ready ? player.getDuration() : 0);
   updatePill();
 }
 function updatePill() {
@@ -796,8 +844,10 @@ function tick() {
   const raw = player.getCurrentTime() || 0, dur = player.getDuration() || 0;
   if (!seeking) { $('#seek').value = dur ? Math.round(raw / dur * 1000) : 0; }
   $('#time').textContent = `${fmt(raw)} / ${fmt(dur)}`;
+  if (!seekMarked && dur > 0 && chorus.length) { markSeek(dur); seekMarked = true; }
   if (player.getPlayerState() !== YT.PlayerState.PLAYING) return;   // 停止中は発射しない(アニメーションは CSS 側で一時停止)
   const tt = raw + offset + APP_LEAD;
+  chorusNow = inChorus(tt);
   if (lastT >= 0 && Math.abs(tt - lastT) > 2) { clearDanmaku(); setNow(''); }   // シーク検知 → 全消去
   lastT = tt;
   for (let i = 0; i < lines.length; i++) {
@@ -831,7 +881,7 @@ function applySettings() {
   $('#font').value = settings.font;
   $('#speed').value = settings.flySec; $('#speedVal').textContent = settings.flySec + 's';
   $('#dimRange').value = settings.dim; $('#dimVal').textContent = Math.round(settings.dim * 100) + '%';
-  $('#showNow').checked = settings.showNow; $('#skipCredits').checked = settings.skipCredits;
+  $('#showNow').checked = settings.showNow; $('#skipCredits').checked = settings.skipCredits; $('#chorusBoost').checked = settings.chorusBoost;
   $('#nowline').classList.toggle('hidden', !settings.showNow);
   store.set('settings', settings);
 }
@@ -848,6 +898,7 @@ bind('speed', 'flySec', e => +e.value);
 bind('dimRange', 'dim', e => +e.value);
 bind('font', 'font', e => e.value);
 bind('showNow', 'showNow', e => e.checked);
+bind('chorusBoost', 'chorusBoost', e => e.checked, () => { seekMarked = false; markSeek(player && ready ? player.getDuration() : 0); });
 bind('skipCredits', 'skipCredits', e => e.checked, () => { const txt = $('#lrcText').value; if (txt) setLines(parseLRC(txt), lyricSource === 'none' ? 'manual' : lyricSource); });
 
 $('#panelBtn').addEventListener('click', () => $('#panel').classList.toggle('open'));
