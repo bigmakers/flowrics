@@ -35,7 +35,7 @@ iOS 版(musicSUB リポジトリの `DanmakuView.swift`)をそのまま移植し
 
 ## 文字PV モード (JIZURA)
 
-設定の「表示モード」を「文字PV (JIZURA)」にすると、弾幕の代わりに [JIZURA 字面](https://github.com/852wa/JIZURA)(hakoniwa / 852wa 作、MIT License)のエンジンで、歌詞から文字PV(リリックモーション)を自動構成して動画の上に重ねる。
+表示モードの既定。設定の「表示モード」で弾幕に切り替えられる。弾幕の代わりに [JIZURA 字面](https://github.com/852wa/JIZURA)(hakoniwa / 852wa 作、MIT License)のエンジンで、歌詞から文字PV(リリックモーション)を自動構成して動画の上に重ねる。
 
 - `jizura.js` は JIZURA の `src/*.js` からエディタ UI(`12_ui.js`)と MP4 / PNG 書き出し(`11_export.js`)を除いて連結したもの(先頭にライセンス表示)。文字PV モードを選んだときだけ読み込む(約 2 MB)
 - 同期歌詞を LRC 文字列にして `J.plan()` に渡し、毎フレーム YouTube の再生時刻で `renderer.frame()` を透過描画する。動画の長さを plan の長さにする

@@ -250,8 +250,8 @@ body.pvmode #danmaku,body.pvmode #nowline{display:none}
     <div class="field">
       <label data-i18n="mode"></label>
       <div class="seg" id="modeSeg">
-        <button data-v="danmaku" data-i18n="modeDanmaku"></button>
         <button data-v="pv" data-i18n="modePv"></button>
+        <button data-v="danmaku" data-i18n="modeDanmaku"></button>
       </div>
     </div>
     <div class="sub" id="pvOpts" hidden>
@@ -326,7 +326,7 @@ body.pvmode #danmaku,body.pvmode #nowline{display:none}
 /* ===================== i18n ===================== */
 const I18N = {
   ja: {
-    empty: '右上の ☰ から YouTube の URL を追加すると、曲に合わせて歌詞が弾幕のように流れます。',
+    empty: '右上の ☰ から YouTube の URL を追加すると、曲に合わせて歌詞が文字PVとして動きます。設定で弾幕表示にも切り替えられます。',
     share: '共有', tabQueue: 'キュー', tabLyrics: '歌詞', tabSettings: '設定',
     ytUrl: 'YouTube の URL(動画 / プレイリスト)または動画ID', add: '追加',
     plImporting: 'プレイリストを読み込んでいます…', plImported: (n) => `プレイリストから ${n} 曲を追加しました`, plImportFail: 'プレイリストを読み込めませんでした(非公開、または存在しない可能性があります)。',
@@ -363,7 +363,7 @@ const I18N = {
     durDiff: (s) => `長さの差 ${s}s`, lrcApplied: 'LRC を適用しました', lrcEmpty: '有効なタイムタグが見つかりません',
   },
   en: {
-    empty: 'Open ☰ (top right) and add a YouTube URL. Lyrics will flow across the screen in sync with the music.',
+    empty: 'Open ☰ (top right) and add a YouTube URL. The lyrics play as a kinetic lyric video in sync with the music. Settings can switch to the danmaku view.',
     share: 'Share', tabQueue: 'Queue', tabLyrics: 'Lyrics', tabSettings: 'Settings',
     ytUrl: 'YouTube URL (video / playlist) or video ID', add: 'Add',
     plImporting: 'Loading playlist…', plImported: (n) => `Added ${n} videos from the playlist`, plImportFail: 'Could not load the playlist (it may be private or missing).',
@@ -460,7 +460,7 @@ const BG = {
 const saved = store.get('settings', {});
 if (!('sizeOpt' in saved)) { delete saved.fontSize; delete saved.speed; delete saved.lanes; delete saved.color; delete saved.font; delete saved.dim; }  // 旧レーン版の設定は捨てる
 const settings = Object.assign({
-  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true, motion: 'soft', chorusBoost: true, mode: 'danmaku', pvBg: 'transparent'
+  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true, motion: 'soft', chorusBoost: true, mode: 'pv', pvBg: 'transparent'
 }, saved);
 let pvState = store.get('pv', { style: 'noir', mood: null, seed: 20260922 });   // JIZURA 側の設定(おまかせ結果を含む)
 delete settings.ytKey;
