@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-itunes-app" content="app-id=6761411700">
 <meta name="description" content="Flowrics Web - YouTube の音楽に合わせて歌詞が弾幕のように流れるプレイヤー">
 <title>Flowrics Web - Danmaku Lyrics for YouTube</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -59,6 +60,7 @@ body.pvmode #danmaku,body.pvmode #nowline{display:none}
 #empty h1{font-size:2.4em;background:linear-gradient(135deg,var(--c1),var(--c2),var(--c3));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 #empty p{color:var(--muted);max-width:520px}
 #empty.hidden{display:none}
+#empty .appstore{pointer-events:auto;display:inline-block;margin-top:6px;padding:10px 18px;border-radius:999px;background:linear-gradient(135deg,var(--c2),var(--c1));color:#fff;font-weight:700;text-decoration:none}
 
 /* ---------- hud ---------- */
 #hud{position:fixed;top:0;left:0;right:0;padding:max(10px,env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:10px;
@@ -155,6 +157,7 @@ body.pvmode #danmaku,body.pvmode #nowline{display:none}
   <div id="empty">
     <h1>Flowrics</h1>
     <p data-i18n="empty"></p>
+    <a class="appstore" href="https://apps.apple.com/jp/app/id6761411700" target="_blank" rel="noopener" data-i18n="appStore"></a>
   </div>
 </div>
 
@@ -324,7 +327,7 @@ body.pvmode #danmaku,body.pvmode #nowline{display:none}
     <div class="hint" data-i18n="keys"></div>
     <div class="foot">
       <span data-i18n="credits"></span><br>
-      <a href="https://bigmakers.github.io/flowrics/">Flowrics</a> · <a href="https://bigmakers.github.io/flowrics/privacy.html" data-i18n="privacy"></a> · <a href="https://bigmakers.github.io/flowrics/support.html" data-i18n="support"></a> · <span id="build">build @BUILD@</span>
+      <a href="https://bigmakers.github.io/flowrics/">Flowrics</a> · <a href="https://bigmakers.github.io/flowrics/privacy.html" data-i18n="privacy"></a> · <a href="https://bigmakers.github.io/flowrics/support.html" data-i18n="support"></a> · <a href="https://apps.apple.com/jp/app/id6761411700" target="_blank" rel="noopener" data-i18n="appStoreShort"></a> · <span id="build">build @BUILD@</span>
     </div>
   </section>
 </aside>
@@ -361,6 +364,7 @@ const I18N = {
     keys: 'キーボード: Space 再生/停止 · ← → 5秒シーク · N 次 · P 前 · [ ] 歌詞オフセット',
     credits: '歌詞データ: LRCLIB (lrclib.net) · 動画: YouTube IFrame Player API · 文字PV: JIZURA 字面 (hakoniwa / 852wa, MIT License)',
     privacy: 'プライバシー', support: 'サポート',
+    appStore: 'iPhone アプリ版を App Store で', appStoreShort: 'iPhone アプリ',
     searching: '歌詞を検索中…', found: (n) => `${n} 件見つかりました。クリックで切り替えられます。`,
     notFound: '同期歌詞が見つかりませんでした。曲名・アーティストを直して再検索するか、LRC を貼り付けてください。',
     searchErr: '歌詞サーバーに接続できませんでした。',
@@ -400,6 +404,7 @@ const I18N = {
     keys: 'Keys: Space play/pause · ← → seek 5s · N next · P prev · [ ] lyrics offset',
     credits: 'Lyrics: LRCLIB (lrclib.net) · Video: YouTube IFrame Player API · Lyric video: JIZURA (hakoniwa / 852wa, MIT License)',
     privacy: 'Privacy', support: 'Support',
+    appStore: 'Get the iPhone app on the App Store', appStoreShort: 'iPhone app',
     searching: 'Searching lyrics…', found: (n) => `${n} result(s). Click to switch.`,
     notFound: 'No synced lyrics found. Fix the track / artist and search again, or paste an LRC.',
     searchErr: 'Could not reach the lyrics server.',
