@@ -982,7 +982,7 @@ function renderPv(tt, playing) {
   pv.need = false; pv.lastT = tm;
   const t0 = performance.now();
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
-  try { pv.renderer.frame(ctx, pv.plan, tm, { scale: cv.width / pv.plan.W, transparent: settings.pvBg !== 'opaque', fast: playing && pv.slow, noHud: true });   // タイムコード等の HUD は Flowrics 側にあるので出さない } catch (e) {}
+  try { pv.renderer.frame(ctx, pv.plan, tm, { scale: cv.width / pv.plan.W, transparent: settings.pvBg !== 'opaque', fast: playing && pv.slow, noHud: true }); } catch (e) {}   // noHud: タイムコード等の HUD は Flowrics 側にあるので出さない
   const dt = performance.now() - t0;   // JIZURA 本体と同じく、遅ければ簡易描画に落とす
   pv.slow = playing ? (dt > 30 ? true : dt < 14 ? false : pv.slow) : false;
 }
