@@ -9,6 +9,8 @@ YouTube の動画を背景に、LRCLIB の同期歌詞を弾幕風に流す Flow
 | GitHub Pages | https://bigmakers.github.io/flowrics/app/ | `main` に push すると自動 |
 | ロリポップ！デプロイナウ | https://flowrics.lolipop-now.app | `./app/deploy.sh` |
 
+デプロイナウは `Cache-Control: max-age=86400` で配信するため、そのままだと一度開いたブラウザに 1 日古いページが残る。`sw.js`(Service Worker)が同一オリジンのファイルを常にサーバーへ確認してから返すので、初回に一度だけ強制再読み込み(Mac Chrome: Cmd+Shift+R)すれば、以後はデプロイ後の普通のリロードで最新版になる。設定タブ下部の `build 日時` はデプロイ時に `deploy.sh` が埋める(ローカルでは `build dev`)。
+
 デプロイナウへは `lolipop` CLI (`npm i -g lolipop`) で `static` フレームワークとして出す。初回は `deploy.sh` の `PROJECT` を空のまま実行するとプロジェクトが作られるので、表示された project ID を `PROJECT` に書き込む。
 
 ## 使い方

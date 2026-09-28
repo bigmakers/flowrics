@@ -12,7 +12,9 @@ NAME=flowrics
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 git -C .. archive HEAD app | tar -x -C "$TMP"
-rm -f "$TMP/app/deploy.sh" "$TMP/app/README.md"   # 配信物は index.html だけにする
+rm -f "$TMP/app/deploy.sh" "$TMP/app/README.md"   # 配信物は index.html / jizura.js / sw.js だけにする
+# どの版が公開されているか分かるように、設定タブ下部の build 表示にコミット日時を入れる
+sed -i.bak "s/@BUILD@/$(git -C .. log -1 --format=%cd --date=format:%Y-%m-%d\ %H:%M -- app)/" "$TMP/app/index.html" && rm -f "$TMP/app/index.html.bak"
 cd "$TMP/app"
 if [ -n "$PROJECT" ]; then
   lolipop deploy --project "$PROJECT"

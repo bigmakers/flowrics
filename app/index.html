@@ -324,7 +324,7 @@ body.pvmode #danmaku,body.pvmode #nowline{display:none}
     <div class="hint" data-i18n="keys"></div>
     <div class="foot">
       <span data-i18n="credits"></span><br>
-      <a href="https://bigmakers.github.io/flowrics/">Flowrics</a> · <a href="https://bigmakers.github.io/flowrics/privacy.html" data-i18n="privacy"></a> · <a href="https://bigmakers.github.io/flowrics/support.html" data-i18n="support"></a>
+      <a href="https://bigmakers.github.io/flowrics/">Flowrics</a> · <a href="https://bigmakers.github.io/flowrics/privacy.html" data-i18n="privacy"></a> · <a href="https://bigmakers.github.io/flowrics/support.html" data-i18n="support"></a> · <span id="build">build @BUILD@</span>
     </div>
   </section>
 </aside>
@@ -1190,6 +1190,8 @@ document.addEventListener('keydown', e => {
   if (ids.length) { queue = ids.map(id => ({ id })); saveQueue(); }
   window.__bootList = p.get('list');
   applySettings(); applyI18n(); applyMode();
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ($('#build').textContent.includes('@BUILD@')) $('#build').textContent = 'build dev';
   const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
 })();
 </script>
