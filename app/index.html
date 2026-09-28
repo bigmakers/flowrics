@@ -26,6 +26,11 @@ a{color:var(--c3)}
 #player{width:100%;height:100%;display:block}
 #dim{position:absolute;inset:0;background:var(--stage-bg);opacity:var(--dim);pointer-events:none}
 #danmaku{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+#pv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;display:none}
+body.pvmode #pv{display:block}
+body.pvmode #danmaku,body.pvmode #nowline{display:none}
+.sub{margin:6px 0 14px 10px;padding-left:12px;border-left:2px solid var(--line)}
+.sub[hidden]{display:none}
 /* iOS 版 DanmakuUIView の移植: 文字種ごとにサイズ・太さ・影を変え、ベースラインで揃える */
 .dm{position:absolute;left:100%;top:0;display:flex;align-items:baseline;white-space:nowrap;font-family:var(--dm-font);color:var(--dm-color);line-height:1.25;will-change:transform;animation:fly linear forwards}
 .dm span{display:inline-block;white-space:pre}
@@ -145,6 +150,7 @@ a{color:var(--c3)}
   <div id="player-wrap"><div id="player"></div></div>
   <div id="dim"></div>
   <div id="danmaku"></div>
+  <canvas id="pv"></canvas>
   <div id="nowline"></div>
   <div id="empty">
     <h1>Flowrics</h1>
@@ -242,6 +248,32 @@ a{color:var(--c3)}
 
   <section class="tab" id="tab-settings">
     <div class="field">
+      <label data-i18n="mode"></label>
+      <div class="seg" id="modeSeg">
+        <button data-v="danmaku" data-i18n="modeDanmaku"></button>
+        <button data-v="pv" data-i18n="modePv"></button>
+      </div>
+    </div>
+    <div class="sub" id="pvOpts" hidden>
+      <div class="field">
+        <label data-i18n="pvStyle"></label>
+        <select id="pvStyle"></select>
+      </div>
+      <div class="row" style="margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn primary" id="pvOmakase" data-i18n="pvOmakase"></button>
+        <button class="btn" id="pvReroll" data-i18n="pvReroll"></button>
+        <span class="hint" id="pvMood" style="margin:0"></span>
+      </div>
+      <div class="field">
+        <label data-i18n="pvBg"></label>
+        <div class="seg" id="pvBgSeg">
+          <button data-v="transparent" data-i18n="pvBgTransparent"></button>
+          <button data-v="opaque" data-i18n="pvBgOpaque"></button>
+        </div>
+      </div>
+      <div class="hint" data-i18n="pvHint"></div>
+    </div>
+    <div class="field">
       <label data-i18n="fontSize"></label>
       <div class="seg" id="sizeSeg">
         <button data-v="random" data-i18n="sizeRandom"></button>
@@ -304,6 +336,10 @@ const I18N = {
     clear: 'すべて削除', queueEmpty: 'キューは空です',
     track: '曲名', artist: 'アーティスト', search: '検索',
     offset: '歌詞のタイミング調整', lrcManual: 'LRC を直接貼り付け', applyLrc: 'この LRC を使う',
+    mode: '表示モード', modeDanmaku: '弾幕', modePv: '文字PV (JIZURA)',
+    pvStyle: 'スタイル', pvOmakase: 'おまかせ', pvReroll: '構成を振り直す', pvBg: '背景', pvBgTransparent: '動画を透かす', pvBgOpaque: 'JIZURA の背景で塗る',
+    pvHint: '歌詞から文字PV(リリックモーション)を自動で組み立てる JIZURA 字面のエンジンで描きます。「おまかせ」でスタイル・雰囲気・構成がまるごと変わり、「構成を振り直す」は今のスタイルのままカット構成だけ変えます。サビ強調がオンならサビの行は強調表現になります。',
+    pvLoading: '文字PV エンジンを読み込んでいます…', pvLoadFail: '文字PV エンジンを読み込めませんでした。', pvOmakaseToast: (st, mood) => `おまかせ: ${st} × ${mood}`, pvRerolled: '構成を振り直しました',
     fontSize: '文字サイズ', sizeRandom: '混', sizeMedium: '中', sizeLarge: '大', sizeXL: '特大',
     motion: '歌詞に合わせて動く', motionOff: 'オフ', motionSoft: '控えめ', motionStrong: '強め', motionHint: '歌詞の行が始まる瞬間に文字が弾みます。「強め」では画面全体も一瞬脈打ちます。',
     speed: '流れる速さ(画面を横切る秒数)', dim: '背景の暗さ(動画の透け具合)', font: 'フォント', bg: '背景色',
@@ -311,7 +347,7 @@ const I18N = {
     chorusBoost: 'サビを強調(文字を一段大きく・動きを強め)', chorusHint: '歌詞の繰り返しからサビの区間を推定します。判定した区間はシークバーにピンクで表示されます。繰り返しの少ない曲では判定されないことがあります。',
     showNow: '現在の行を画面下にも表示', skipCredits: '作詞・作曲などのクレジット行を除外',
     keys: 'キーボード: Space 再生/停止 · ← → 5秒シーク · N 次 · P 前 · [ ] 歌詞オフセット',
-    credits: '歌詞データ: LRCLIB (lrclib.net) · 動画: YouTube IFrame Player API',
+    credits: '歌詞データ: LRCLIB (lrclib.net) · 動画: YouTube IFrame Player API · 文字PV: JIZURA 字面 (hakoniwa / 852wa, MIT License)',
     privacy: 'プライバシー', support: 'サポート',
     searching: '歌詞を検索中…', found: (n) => `${n} 件見つかりました。クリックで切り替えられます。`,
     notFound: '同期歌詞が見つかりませんでした。曲名・アーティストを直して再検索するか、LRC を貼り付けてください。',
@@ -337,6 +373,10 @@ const I18N = {
     clear: 'Clear all', queueEmpty: 'Queue is empty',
     track: 'Track', artist: 'Artist', search: 'Search',
     offset: 'Lyrics timing offset', lrcManual: 'Paste LRC manually', applyLrc: 'Use this LRC',
+    mode: 'Display mode', modeDanmaku: 'Danmaku', modePv: 'Lyric video (JIZURA)',
+    pvStyle: 'Style', pvOmakase: 'Surprise me', pvReroll: 'Reroll cuts', pvBg: 'Background', pvBgTransparent: 'Show the video', pvBgOpaque: 'Paint JIZURA background',
+    pvHint: 'Draws with the JIZURA engine, which builds a kinetic lyric video from the lyrics. "Surprise me" changes style, mood and composition at once; "Reroll cuts" keeps the style and changes only the cut composition. With chorus emphasis on, chorus lines get emphasized treatments.',
+    pvLoading: 'Loading the lyric video engine…', pvLoadFail: 'Could not load the lyric video engine.', pvOmakaseToast: (st, mood) => `Surprise: ${st} × ${mood}`, pvRerolled: 'Cuts rerolled',
     fontSize: 'Font size', sizeRandom: 'Mixed', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
     motion: 'Move with the lyrics', motionOff: 'Off', motionSoft: 'Subtle', motionStrong: 'Strong', motionHint: 'Characters bounce in as each lyric line starts. "Strong" also pulses the whole screen.',
     speed: 'Scroll speed (seconds across the screen)', dim: 'Background dim (video visibility)', font: 'Font', bg: 'Background color',
@@ -344,7 +384,7 @@ const I18N = {
     chorusBoost: 'Emphasize the chorus (bigger text, strong motion)', chorusHint: 'The chorus is estimated from repeated lyric lines and shown in pink on the seek bar. Songs with little repetition may not get one.',
     showNow: 'Show current line at bottom', skipCredits: 'Skip credit lines (lyricist / composer)',
     keys: 'Keys: Space play/pause · ← → seek 5s · N next · P prev · [ ] lyrics offset',
-    credits: 'Lyrics: LRCLIB (lrclib.net) · Video: YouTube IFrame Player API',
+    credits: 'Lyrics: LRCLIB (lrclib.net) · Video: YouTube IFrame Player API · Lyric video: JIZURA (hakoniwa / 852wa, MIT License)',
     privacy: 'Privacy', support: 'Support',
     searching: 'Searching lyrics…', found: (n) => `${n} result(s). Click to switch.`,
     notFound: 'No synced lyrics found. Fix the track / artist and search again, or paste an LRC.',
@@ -420,8 +460,9 @@ const BG = {
 const saved = store.get('settings', {});
 if (!('sizeOpt' in saved)) { delete saved.fontSize; delete saved.speed; delete saved.lanes; delete saved.color; delete saved.font; delete saved.dim; }  // 旧レーン版の設定は捨てる
 const settings = Object.assign({
-  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true, motion: 'soft', chorusBoost: true
+  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true, motion: 'soft', chorusBoost: true, mode: 'danmaku', pvBg: 'transparent'
 }, saved);
+let pvState = store.get('pv', { style: 'noir', mood: null, seed: 20260922 });   // JIZURA 側の設定(おまかせ結果を含む)
 delete settings.ytKey;
 let queue = store.get('queue', []);   // [{id,title,author}]
 let playlists = store.get('playlists', []);   // [{name, items:[{id,title,author}], at}]
@@ -572,6 +613,7 @@ function parseLRC(text) {
 function setLines(newLines, source) {
   lines = newLines; lyricSource = source; clearDanmaku(); setNow(''); lastT = -1;
   chorus = detectChorus(lines); seekMarked = false; markSeek(player && ready ? player.getDuration() : 0);
+  if (settings.mode === 'pv') { if (pv.ready) buildPvPlan(); else clearPv(); }
   updatePill();
 }
 function updatePill() {
@@ -845,7 +887,9 @@ function tick() {
   if (!seeking) { $('#seek').value = dur ? Math.round(raw / dur * 1000) : 0; }
   $('#time').textContent = `${fmt(raw)} / ${fmt(dur)}`;
   if (!seekMarked && dur > 0 && chorus.length) { markSeek(dur); seekMarked = true; }
-  if (player.getPlayerState() !== YT.PlayerState.PLAYING) return;   // 停止中は発射しない(アニメーションは CSS 側で一時停止)
+  const playing = player.getPlayerState() === YT.PlayerState.PLAYING;
+  if (settings.mode === 'pv') { renderPv(raw + offset, playing); return; }
+  if (!playing) return;   // 停止中は発射しない(アニメーションは CSS 側で一時停止)
   const tt = raw + offset + APP_LEAD;
   chorusNow = inChorus(tt);
   if (lastT >= 0 && Math.abs(tt - lastT) > 2) { clearDanmaku(); setNow(''); }   // シーク検知 → 全消去
@@ -866,6 +910,100 @@ function tick() {
   }
 }
 
+/* ===================== 文字PV モード (JIZURA 字面エンジン) ===================== */
+const PV_ASPECTS = { '16:9': 16 / 9, '9:16': 9 / 16, '4:3': 4 / 3, '3:4': 3 / 4, '1:1': 1, '21:9': 21 / 9, '4:5': 4 / 5 };
+const pv = { loading: null, ready: false, renderer: null, plan: null, project: null, aspect: '16:9', slow: false, need: true, lastT: -1, fontsFor: '' };
+function ensureJizura() {
+  if (pv.ready) return Promise.resolve();
+  if (pv.loading) return pv.loading;
+  toast(t('pvLoading'));
+  pv.loading = new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = 'jizura.js';
+    sc.onload = () => { pv.ready = !!(window.J && J.plan && J.Renderer); pv.ready ? res() : rej(new Error('no J')); };
+    sc.onerror = () => rej(new Error('load'));
+    document.head.appendChild(sc);
+  }).then(() => { pv.renderer = new J.Renderer(); fillPvStyles(); }).catch(e => { pv.loading = null; toast(t('pvLoadFail')); settings.mode = 'danmaku'; applySettings(); throw e; });
+  return pv.loading;
+}
+function fillPvStyles() {
+  const sel = $('#pvStyle'); if (!pv.ready || sel.options.length) return;
+  Object.keys(J.STYLES).forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = J.STYLES[k].name; sel.appendChild(o); });
+  sel.value = pvState.style in J.STYLES ? pvState.style : 'noir';
+  showPvMood();
+}
+function showPvMood() { $('#pvMood').textContent = pv.ready && pvState.mood && J.MOODS[pvState.mood] ? J.MOODS[pvState.mood].name : ''; }
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+function lrcOf(ls) {   // 内部の行 → JIZURA が読む LRC。サビ強調オンならサビの行は *強調*
+  return ls.map(l => {
+    const m = Math.floor(l.t / 60), sec = (l.t - m * 60).toFixed(2);
+    const text = l.text.replace(/[*|/]/g, ' ').trim() || '…';
+    const em = settings.chorusBoost && chorus.some(c => l.t >= c.start && l.t < c.end);
+    return `[${pad2(m)}:${sec.length < 5 ? '0' + sec : sec}]${em ? '*' + text + '*' : text}`;
+  }).join('\n');
+}
+function pickAspect(w, h) {
+  const r = w / Math.max(1, h); let best = '16:9', bd = 1e9;
+  for (const [k, v] of Object.entries(PV_ASPECTS)) { const d = Math.abs(Math.log(v / r)); if (d < bd) { bd = d; best = k; } }
+  return best;
+}
+function sizePvCanvas() {
+  const cv = $('#pv'), st = $('#stage'); const sw = st.clientWidth, sh = st.clientHeight; if (!sw || !sh) return;
+  const asp = pickAspect(sw, sh); const ratio = PV_ASPECTS[asp];
+  let cw = sw, ch = Math.round(sw / ratio); if (ch > sh) { ch = sh; cw = Math.round(sh * ratio); }
+  cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), cap = 1600 / Math.max(cw, ch);   // 描画負荷の上限: 長辺 1600px
+  const k = Math.min(dpr, Math.max(0.5, cap));
+  const bw = Math.round(cw * k), bh = Math.round(ch * k);
+  if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+  if (asp !== pv.aspect) { pv.aspect = asp; if (pv.plan) buildPvPlan(); }
+  pv.need = true;
+}
+function buildPvPlan() {
+  if (!pv.ready) return;
+  if (!lines.length) { pv.plan = null; clearPv(); return; }
+  const item = queue[cur] || {};
+  const proj = Object.assign(J.defaultProject(), pvState, {
+    lyrics: lrcOf(lines), title: item.title || '', artist: item.author || '', aspect: pv.aspect, keyBg: 'off', lang: 'auto',
+  });
+  proj.timing = Object.assign({}, proj.timing, { offset: APP_LEAD });
+  pv.project = proj;
+  const dur = player && ready ? player.getDuration() : 0;
+  try { pv.plan = J.plan(proj, dur > 0 ? { duration: dur } : null); } catch (e) { console.error(e); pv.plan = null; return; }
+  pv.need = true; pv.lastT = -1;
+  const key = pvState.style + '|' + lines.length + '|' + (lines[0] && lines[0].text);
+  if (key !== pv.fontsFor) { pv.fontsFor = key; J.ensureFonts(lines.map(l => l.text).join('') + (item.title || ''), J.fontsOfPlan(pv.plan)).then(() => { pv.need = true; }).catch(() => {}); }
+}
+function clearPv() { const cv = $('#pv'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); }
+function renderPv(tt, playing) {
+  if (!pv.ready || !pv.plan) return;
+  const cv = $('#pv'), ctx = cv.getContext('2d');
+  const tm = Math.max(0, Math.min(pv.plan.duration - 0.001, tt));
+  if (!playing && !pv.need && Math.abs(tm - pv.lastT) < 0.001) return;
+  pv.need = false; pv.lastT = tm;
+  const t0 = performance.now();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+  try { pv.renderer.frame(ctx, pv.plan, tm, { scale: cv.width / pv.plan.W, transparent: settings.pvBg !== 'opaque', fast: playing && pv.slow }); } catch (e) {}
+  const dt = performance.now() - t0;   // JIZURA 本体と同じく、遅ければ簡易描画に落とす
+  pv.slow = playing ? (dt > 30 ? true : dt < 14 ? false : pv.slow) : false;
+}
+function savePv() { store.set('pv', pvState); }
+function pvOmakase() {
+  if (!pv.ready) return;
+  const base = Object.assign(J.defaultProject(), pvState);
+  const r = J.omakase(base);
+  pvState = { style: r.style, mood: r.mood, seed: r.seed, fx: r.fx, enabled: r.enabled, fonts: r.fonts, colors: r.colors };
+  savePv(); $('#pvStyle').value = r.style; showPvMood(); buildPvPlan();
+  toast(t('pvOmakaseToast', J.STYLES[r.style].name, J.MOODS[r.mood].name));
+}
+function pvReroll() { pvState.seed = (Math.random() * 1e9) | 0; savePv(); buildPvPlan(); toast(t('pvRerolled')); }
+function applyMode() {
+  const isPv = settings.mode === 'pv';
+  document.body.classList.toggle('pvmode', isPv);
+  $('#pvOpts').hidden = !isPv;
+  if (isPv) { ensureJizura().then(() => { sizePvCanvas(); buildPvPlan(); }).catch(() => {}); }
+  else { clearDanmaku(); }
+}
+
 /* ===================== UI wiring ===================== */
 function applySettings() {
   const root = document.documentElement.style, bg = BG[settings.bg] || BG.black;
@@ -876,6 +1014,8 @@ function applySettings() {
   root.setProperty('--dm-shadow-strong', `rgba(${bg.shadow},.9)`);
   root.setProperty('--dm-shadow-soft', `rgba(${bg.shadow},.7)`);
   $$('#sizeSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === settings.sizeOpt));
+  $$('#modeSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === settings.mode));
+  $$('#pvBgSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === settings.pvBg));
   $$('#motionSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === settings.motion));
   $$('#bgSwatches button').forEach(b => b.classList.toggle('active', b.dataset.v === settings.bg));
   $('#font').value = settings.font;
@@ -893,12 +1033,18 @@ FONTS.forEach(([v, label]) => { const o = document.createElement('option'); o.va
 Object.entries(BG).forEach(([k, v]) => { const b = document.createElement('button'); b.dataset.v = k; b.style.background = v.bg; b.addEventListener('click', () => { settings.bg = k; applySettings(); }); $('#bgSwatches').appendChild(b); });
 $$('#sizeSeg button').forEach(b => b.addEventListener('click', () => { settings.sizeOpt = b.dataset.v; applySettings(); }));
 $$('#motionSeg button').forEach(b => b.addEventListener('click', () => { settings.motion = b.dataset.v; applySettings(); }));
+$$('#modeSeg button').forEach(b => b.addEventListener('click', () => { if (settings.mode === b.dataset.v) return; settings.mode = b.dataset.v; applySettings(); applyMode(); }));
+$$('#pvBgSeg button').forEach(b => b.addEventListener('click', () => { settings.pvBg = b.dataset.v; applySettings(); pv.need = true; }));
+$('#pvStyle').addEventListener('change', e => { pvState.style = e.target.value; pvState.mood = null; savePv(); showPvMood(); buildPvPlan(); });
+$('#pvOmakase').addEventListener('click', pvOmakase);
+$('#pvReroll').addEventListener('click', pvReroll);
+window.addEventListener('resize', () => { if (settings.mode === 'pv') sizePvCanvas(); });
 $$('#bgSwatches button').forEach(b => { b.title = t('bg' + b.dataset.v[0].toUpperCase() + b.dataset.v.slice(1)); });
 bind('speed', 'flySec', e => +e.value);
 bind('dimRange', 'dim', e => +e.value);
 bind('font', 'font', e => e.value);
 bind('showNow', 'showNow', e => e.checked);
-bind('chorusBoost', 'chorusBoost', e => e.checked, () => { seekMarked = false; markSeek(player && ready ? player.getDuration() : 0); });
+bind('chorusBoost', 'chorusBoost', e => e.checked, () => { seekMarked = false; markSeek(player && ready ? player.getDuration() : 0); if (settings.mode === 'pv') buildPvPlan(); });
 bind('skipCredits', 'skipCredits', e => e.checked, () => { const txt = $('#lrcText').value; if (txt) setLines(parseLRC(txt), lyricSource === 'none' ? 'manual' : lyricSource); });
 
 $('#panelBtn').addEventListener('click', () => $('#panel').classList.toggle('open'));
@@ -961,7 +1107,7 @@ document.addEventListener('keydown', e => {
   const ids = (p.get('v') || p.get('ids') || '').split(',').map(parseId).filter(Boolean);
   if (ids.length) { queue = ids.map(id => ({ id })); saveQueue(); }
   window.__bootList = p.get('list');
-  applySettings(); applyI18n();
+  applySettings(); applyI18n(); applyMode();
   const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
 })();
 </script>
