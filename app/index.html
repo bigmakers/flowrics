@@ -100,7 +100,7 @@ body.pvmode #danmaku,body.pvmode #nowline{display:none}
 .tab.active{display:block}
 .field{margin-bottom:12px}
 .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
-#panel input[type=text],#panel input[type=url],#panel textarea,#panel select{width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.06)}
+#panel input[type=text],#panel input[type=url],#panel input[type=search],#panel textarea,#panel select{width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.06)}
 .field textarea{min-height:130px;font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical}
 .field input[type=range]{width:100%}
 .inline{display:flex;gap:6px}
@@ -197,6 +197,15 @@ body.pvmode #danmaku,body.pvmode #nowline{display:none}
 
   <section class="tab active" id="tab-queue">
     <div class="field">
+      <label data-i18n="ytSearch"></label>
+      <div class="inline">
+        <input type="search" id="ytq" autocomplete="off" data-i18n-ph="ytSearchPh">
+        <button class="btn primary" id="ytSearchBtn" data-i18n="search"></button>
+      </div>
+      <div class="status" id="ytStatus"></div>
+      <ul class="list" id="ytResults" hidden></ul>
+    </div>
+    <div class="field">
       <label data-i18n="ytUrl"></label>
       <div class="inline">
         <input type="url" id="urlInput" placeholder="https://www.youtube.com/watch?v=... / playlist?list=..." autocomplete="off">
@@ -264,6 +273,7 @@ body.pvmode #danmaku,body.pvmode #nowline{display:none}
         <button class="btn" id="pvReroll" data-i18n="pvReroll"></button>
         <span class="hint" id="pvMood" style="margin:0"></span>
       </div>
+      <label class="check"><input type="checkbox" id="pvPerSong"> <span data-i18n="pvPerSong"></span></label>
       <div class="field">
         <label data-i18n="pvBg"></label>
         <div class="seg" id="pvBgSeg">
@@ -328,6 +338,7 @@ const I18N = {
   ja: {
     empty: '右上の ☰ から YouTube の URL を追加すると、曲に合わせて歌詞が文字PVとして動きます。設定で弾幕表示にも切り替えられます。',
     share: '共有', tabQueue: 'キュー', tabLyrics: '歌詞', tabSettings: '設定',
+    ytSearch: 'YouTube を検索', ytSearchPh: '曲名 アーティスト', ytSearching: '検索中…', ytNoResults: '見つかりませんでした。', ytSearchFail: '検索サーバーに接続できませんでした。YouTube の検索結果を新しいタブで開いたので、動画の URL をコピーして下の欄に貼り付けてください。',
     ytUrl: 'YouTube の URL(動画 / プレイリスト)または動画ID', add: '追加',
     plImporting: 'プレイリストを読み込んでいます…', plImported: (n) => `プレイリストから ${n} 曲を追加しました`, plImportFail: 'プレイリストを読み込めませんでした(非公開、または存在しない可能性があります)。',
     plNamePh: 'プレイリスト名', plSave: '保存', plSaved: '保存したプレイリスト', plNone: 'まだありません。キューに曲を入れて名前を付けて保存すると、ここから呼び出せます。',
@@ -339,6 +350,7 @@ const I18N = {
     mode: '表示モード', modeDanmaku: '弾幕', modePv: '文字PV (JIZURA)',
     pvStyle: 'スタイル', pvOmakase: 'おまかせ', pvReroll: '構成を振り直す', pvBg: '背景', pvBgTransparent: '動画を透かす', pvBgOpaque: 'JIZURA の背景で塗る',
     pvHint: '歌詞から文字PV(リリックモーション)を自動で組み立てる JIZURA 字面のエンジンで描きます。「おまかせ」でスタイル・雰囲気・構成がまるごと変わり、「構成を振り直す」は今のスタイルのままカット構成だけ変えます。サビ強調がオンならサビの行は強調表現になります。',
+    pvPerSong: '曲ごとにスタイルを変える(曲が変わるたびに自動でおまかせ。この曲で選び直した内容は曲ごとに記憶)', pvSongStyle: (st, mood) => `この曲のスタイル: ${st} × ${mood}`,
     pvLoading: '文字PV エンジンを読み込んでいます…', pvLoadFail: '文字PV エンジンを読み込めませんでした。', pvOmakaseToast: (st, mood) => `おまかせ: ${st} × ${mood}`, pvRerolled: '構成を振り直しました',
     fontSize: '文字サイズ', sizeRandom: '混', sizeMedium: '中', sizeLarge: '大', sizeXL: '特大',
     motion: '歌詞に合わせて動く', motionOff: 'オフ', motionSoft: '控えめ', motionStrong: '強め', motionHint: '歌詞の行が始まる瞬間に文字が弾みます。「強め」では画面全体も一瞬脈打ちます。',
@@ -365,6 +377,7 @@ const I18N = {
   en: {
     empty: 'Open ☰ (top right) and add a YouTube URL. The lyrics play as a kinetic lyric video in sync with the music. Settings can switch to the danmaku view.',
     share: 'Share', tabQueue: 'Queue', tabLyrics: 'Lyrics', tabSettings: 'Settings',
+    ytSearch: 'Search YouTube', ytSearchPh: 'song title artist', ytSearching: 'Searching…', ytNoResults: 'No results.', ytSearchFail: 'Could not reach a search server. YouTube results were opened in a new tab; copy a video URL and paste it below.',
     ytUrl: 'YouTube URL (video / playlist) or video ID', add: 'Add',
     plImporting: 'Loading playlist…', plImported: (n) => `Added ${n} videos from the playlist`, plImportFail: 'Could not load the playlist (it may be private or missing).',
     plNamePh: 'Playlist name', plSave: 'Save', plSaved: 'Saved playlists', plNone: 'None yet. Fill the queue, give it a name and save it to recall it here.',
@@ -376,6 +389,7 @@ const I18N = {
     mode: 'Display mode', modeDanmaku: 'Danmaku', modePv: 'Lyric video (JIZURA)',
     pvStyle: 'Style', pvOmakase: 'Surprise me', pvReroll: 'Reroll cuts', pvBg: 'Background', pvBgTransparent: 'Show the video', pvBgOpaque: 'Paint JIZURA background',
     pvHint: 'Draws with the JIZURA engine, which builds a kinetic lyric video from the lyrics. "Surprise me" changes style, mood and composition at once; "Reroll cuts" keeps the style and changes only the cut composition. With chorus emphasis on, chorus lines get emphasized treatments.',
+    pvPerSong: 'Change style per song (auto surprise on each new song; manual picks are remembered per song)', pvSongStyle: (st, mood) => `Style for this song: ${st} × ${mood}`,
     pvLoading: 'Loading the lyric video engine…', pvLoadFail: 'Could not load the lyric video engine.', pvOmakaseToast: (st, mood) => `Surprise: ${st} × ${mood}`, pvRerolled: 'Cuts rerolled',
     fontSize: 'Font size', sizeRandom: 'Mixed', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
     motion: 'Move with the lyrics', motionOff: 'Off', motionSoft: 'Subtle', motionStrong: 'Strong', motionHint: 'Characters bounce in as each lyric line starts. "Strong" also pulses the whole screen.',
@@ -460,9 +474,10 @@ const BG = {
 const saved = store.get('settings', {});
 if (!('sizeOpt' in saved)) { delete saved.fontSize; delete saved.speed; delete saved.lanes; delete saved.color; delete saved.font; delete saved.dim; }  // 旧レーン版の設定は捨てる
 const settings = Object.assign({
-  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true, motion: 'soft', chorusBoost: true, mode: 'pv', pvBg: 'transparent'
+  sizeOpt: 'random', flySec: 8, dim: 0.75, font: FONTS[0][0], bg: 'black', showNow: false, skipCredits: true, motion: 'soft', chorusBoost: true, mode: 'pv', pvBg: 'transparent', pvPerSong: true
 }, saved);
 let pvState = store.get('pv', { style: 'noir', mood: null, seed: 20260922 });   // JIZURA 側の設定(おまかせ結果を含む)
+let pvSong = null;   // 曲ごとモードで pvState が属している動画 ID
 delete settings.ytKey;
 let queue = store.get('queue', []);   // [{id,title,author}]
 let playlists = store.get('playlists', []);   // [{name, items:[{id,title,author}], at}]
@@ -704,6 +719,50 @@ function pickCandidate(i) {
   $('#lrcText').value = c.syncedLyrics;
   setLines(parseLRC(c.syncedLyrics), 'synced');
   renderResults();
+}
+
+/* ===================== YouTube 検索 (Piped API: キー不要・CORS 可。公開インスタンスを順に試す) ===================== */
+const PIPED = ['https://api.piped.private.coffee', 'https://pipedapi.ducks.party', 'https://pipedapi.adminforge.de', 'https://pipedapi.kavin.rocks'];   // 2026-09 時点で応答した順。止まった所は自動で次へ
+const pipedDead = new Set();
+function fetchTimeout(url, ms) { const ac = new AbortController(); const tm = setTimeout(() => ac.abort(), ms); return fetch(url, { signal: ac.signal, headers: { Accept: 'application/json' } }).finally(() => clearTimeout(tm)); }
+async function pipedSearch(q) {
+  const good = store.get('pipedGood', null);
+  const order = [...new Set([good, ...PIPED].filter(Boolean))].filter(h => !pipedDead.has(h));
+  for (const host of order) {
+    try {
+      const r = await fetchTimeout(`${host}/search?q=${encodeURIComponent(q)}&filter=videos`, 7000);
+      if (!r.ok) throw new Error(r.status);
+      const d = await r.json();
+      if (!d || !Array.isArray(d.items)) throw new Error('shape');
+      store.set('pipedGood', host);
+      return d.items.filter(it => it && it.url && /v=([A-Za-z0-9_-]{11})/.test(it.url)).map(it => ({
+        id: it.url.match(/v=([A-Za-z0-9_-]{11})/)[1], title: it.title || '', author: it.uploaderName || '', duration: it.duration || 0, thumb: it.thumbnail || '',
+      }));
+    } catch (e) { pipedDead.add(host); }
+  }
+  return null;
+}
+async function searchYouTube(q) {
+  q = (q || '').trim(); if (!q) return;
+  const status = $('#ytStatus'), ul = $('#ytResults');
+  status.textContent = t('ytSearching'); ul.hidden = true;
+  const ck = 'yt.' + q.toLowerCase(); let cached = store.get(ck, null);
+  let list = cached && Date.now() - cached.at < 3600e3 ? cached.list : null;
+  if (!list) { list = await pipedSearch(q); if (list) store.set(ck, { at: Date.now(), list: list.slice(0, 20) }); }
+  if (!list) { window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank', 'noopener'); status.textContent = t('ytSearchFail'); return; }
+  renderYtResults(list.slice(0, 20));
+  status.textContent = list.length ? '' : t('ytNoResults');
+}
+function renderYtResults(list) {
+  const ul = $('#ytResults'); ul.innerHTML = ''; ul.hidden = !list.length;
+  list.forEach(v => {
+    const li = document.createElement('li');
+    li.innerHTML = `<img alt="" width="48" height="27" style="border-radius:4px;object-fit:cover;flex:none"><div class="t"><b></b><span></span></div><button class="x" title="add">＋</button>`;
+    li.querySelector('img').src = `https://i.ytimg.com/vi/${v.id}/default.jpg`;
+    li.querySelector('b').textContent = v.title; li.querySelector('span').textContent = v.author + (v.duration ? ' · ' + fmt(v.duration) : '');
+    li.addEventListener('click', () => { const item = { id: v.id, title: v.title, author: cleanAuthor(v.author) }; queue.push(item); saveQueue(); renderQueue(); toast(t('added')); if (cur < 0 || player.getPlayerState() !== YT.PlayerState.PLAYING) playIndex(queue.length - 1); });
+    ul.appendChild(li);
+  });
 }
 
 /* ===================== queue ===================== */
@@ -960,6 +1019,7 @@ function sizePvCanvas() {
 }
 function buildPvPlan() {
   if (!pv.ready) return;
+  syncPvStateToSong();
   if (!lines.length) { pv.plan = null; clearPv(); return; }
   const item = queue[cur] || {};
   const proj = Object.assign(J.defaultProject(), pvState, {
@@ -986,7 +1046,26 @@ function renderPv(tt, playing) {
   const dt = performance.now() - t0;   // JIZURA 本体と同じく、遅ければ簡易描画に落とす
   pv.slow = playing ? (dt > 30 ? true : dt < 14 ? false : pv.slow) : false;
 }
-function savePv() { store.set('pv', pvState); }
+function savePv() { if (settings.pvPerSong && pvSong) store.set('pv.v.' + pvSong, pvState); else store.set('pv', pvState); }
+function seededRng(str) { let a = 0x9e3779b9 ^ str.length; for (const c of str) a = Math.imul(a ^ c.charCodeAt(0), 0x85ebca6b) >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let x = Math.imul(a ^ (a >>> 15), 1 | a); x ^= x + Math.imul(x ^ (x >>> 7), 61 | x); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; }; }
+// 曲ごとモード: その曲の記憶があれば使い、なければ動画 ID から決まる「おまかせ」を作って記憶する
+function syncPvStateToSong() {
+  const vid = queue[cur] && queue[cur].id;
+  if (!pv.ready || !settings.pvPerSong || !vid) { pvSong = settings.pvPerSong ? vid || null : null; return; }
+  if (pvSong === vid) return;
+  pvSong = vid;
+  let st = store.get('pv.v.' + vid, null);
+  if (!st) {
+    const base = Object.assign(J.defaultProject(), store.get('pv', {}));
+    const r = J.omakase(base, seededRng(vid));
+    st = { style: r.style, mood: r.mood, seed: r.seed, fx: r.fx, enabled: r.enabled, fonts: r.fonts, colors: r.colors };
+    store.set('pv.v.' + vid, st);
+  }
+  pvState = st;
+  if ($('#pvStyle').options.length) $('#pvStyle').value = st.style;
+  showPvMood();
+  if (st.mood && J.MOODS[st.mood] && J.STYLES[st.style]) toast(t('pvSongStyle', J.STYLES[st.style].name, J.MOODS[st.mood].name));
+}
 function pvOmakase() {
   if (!pv.ready) return;
   const base = Object.assign(J.defaultProject(), pvState);
@@ -1021,7 +1100,7 @@ function applySettings() {
   $('#font').value = settings.font;
   $('#speed').value = settings.flySec; $('#speedVal').textContent = settings.flySec + 's';
   $('#dimRange').value = settings.dim; $('#dimVal').textContent = Math.round(settings.dim * 100) + '%';
-  $('#showNow').checked = settings.showNow; $('#skipCredits').checked = settings.skipCredits; $('#chorusBoost').checked = settings.chorusBoost;
+  $('#showNow').checked = settings.showNow; $('#skipCredits').checked = settings.skipCredits; $('#chorusBoost').checked = settings.chorusBoost; $('#pvPerSong').checked = settings.pvPerSong;
   $('#nowline').classList.toggle('hidden', !settings.showNow);
   store.set('settings', settings);
 }
@@ -1037,6 +1116,9 @@ $$('#modeSeg button').forEach(b => b.addEventListener('click', () => { if (setti
 $$('#pvBgSeg button').forEach(b => b.addEventListener('click', () => { settings.pvBg = b.dataset.v; applySettings(); pv.need = true; }));
 $('#pvStyle').addEventListener('change', e => { pvState.style = e.target.value; pvState.mood = null; savePv(); showPvMood(); buildPvPlan(); });
 $('#pvOmakase').addEventListener('click', pvOmakase);
+bind('pvPerSong', 'pvPerSong', e => e.checked, () => { pvSong = null; if (!settings.pvPerSong) { pvState = store.get('pv', { style: 'noir', mood: null, seed: 20260922 }); if ($('#pvStyle').options.length) $('#pvStyle').value = pvState.style in (window.J ? J.STYLES : {}) ? pvState.style : 'noir'; showPvMood(); } if (settings.mode === 'pv') buildPvPlan(); });
+$('#ytSearchBtn').addEventListener('click', () => searchYouTube($('#ytq').value));
+$('#ytq').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchYouTube($('#ytq').value); } });
 $('#pvReroll').addEventListener('click', pvReroll);
 window.addEventListener('resize', () => { if (settings.mode === 'pv') sizePvCanvas(); });
 $$('#bgSwatches button').forEach(b => { b.title = t('bg' + b.dataset.v[0].toUpperCase() + b.dataset.v.slice(1)); });
