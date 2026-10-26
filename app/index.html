@@ -369,6 +369,7 @@ const I18N = {
     notFound: '同期歌詞が見つかりませんでした。曲名・アーティストを直して再検索するか、LRC を貼り付けてください。',
     searchErr: '歌詞サーバーに接続できませんでした。',
     pillNone: '歌詞なし', pillSearching: '検索中', pillSynced: '同期歌詞', pillManual: '手動 LRC',
+    iosTap: 'iPhone / iPad では最初の再生だけ、画面の動画(再生ボタン)を直接タップしてください。以降は曲が終わると自動で次へ進みます。',
     invalidUrl: 'YouTube の URL または 11 桁の動画 ID を入力してください。',
     added: 'キューに追加しました',
     embedErr: 'この動画は埋め込み再生が許可されていません。',
@@ -409,6 +410,7 @@ const I18N = {
     notFound: 'No synced lyrics found. Fix the track / artist and search again, or paste an LRC.',
     searchErr: 'Could not reach the lyrics server.',
     pillNone: 'No lyrics', pillSearching: 'Searching', pillSynced: 'Synced', pillManual: 'Manual LRC',
+    iosTap: 'On iPhone / iPad, tap the video itself (its play button) to start the first time. After that the queue advances automatically.',
     invalidUrl: 'Enter a YouTube URL or an 11-character video ID.',
     added: 'Added to queue',
     embedErr: 'This video does not allow embedded playback.',
@@ -814,14 +816,14 @@ function finishImport(ids) {
   const imp = importing; importing = null; clearTimeout(imp.timer);
   if (!ids || !ids.length) {
     toast(t('plImportFail'));
-    if (cur >= 0) { if (imp.wasPlaying) player.loadVideoById({ videoId: queue[cur].id, startSeconds: imp.pos }); else player.cueVideoById(queue[cur].id); }
+    if (cur >= 0) { if (imp.wasPlaying) playIndex(cur, true, imp.pos); else playIndex(cur, false); }
     else player.stopVideo();
     return;
   }
   const start = queue.length;
   const items = ids.map(id => ({ id })); queue.push(...items); saveQueue(); renderQueue(); fetchTitles(items);
   toast(t('plImported', ids.length));
-  if (cur >= 0 && imp.wasPlaying) player.loadVideoById({ videoId: queue[cur].id, startSeconds: imp.pos });   // 再生中だった曲に戻る
+  if (cur >= 0 && imp.wasPlaying) playIndex(cur, true, imp.pos);   // 再生中だった曲に戻る(キューが増えたのでプレイリストも渡し直す)
   else playIndex(start);
 }
 function addUrl(s) {
@@ -870,15 +872,35 @@ function removeAt(i) {
   else if (i < cur) cur--;
   saveQueue(); renderQueue();
 }
-function playIndex(i, autoplay = true) {
-  if (i < 0 || i >= queue.length || !player || !ready) return;
+// 再生はプレイヤー内蔵のプレイリスト機能に任せる: キュー全体を playlist として渡しておくと、曲が終わったときに
+// プレイヤー自身が次へ進む。iPhone(Safari)はページ側からの再生指示を制限するので、この方式でないと連続再生できない。
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const queueIds = () => queue.map(q => q.id);
+function playerHasQueue() {
+  const p = player && player.getPlaylist ? player.getPlaylist() : null;
+  return Array.isArray(p) && p.length === queue.length && p.every((id, i) => queue[i] && id === queue[i].id);
+}
+function showItem(i) {   // キュー上の「今の曲」を切り替える(UI と歌詞のリセット)。プレイヤーの操作はしない
   cur = i; const item = queue[i];
   searchedFor = null; setLines([], 'none'); candidates = []; $('#resultList').innerHTML = ''; $('#searchStatus').textContent = ''; $('#lrcText').value = '';
   offset = store.get('offset.' + item.id, 0); $('#offset').value = offset; $('#offsetVal').textContent = offset.toFixed(1) + 's';
   $('#empty').classList.add('hidden');
   $('#hudTitle').textContent = item.title || item.id; $('#hudSub').textContent = item.author || '';
-  if (autoplay) player.loadVideoById(item.id); else player.cueVideoById(item.id);
   renderQueue();
+}
+let iosHintShown = false;
+function iosHint() {
+  if (!isIOS || iosHintShown) return;
+  setTimeout(() => { const st = player.getPlayerState(); if (st !== YT.PlayerState.PLAYING && st !== YT.PlayerState.BUFFERING && !iosHintShown) { iosHintShown = true; toast(t('iosTap')); } }, 900);
+}
+function playIndex(i, autoplay = true, startSeconds = 0) {
+  if (i < 0 || i >= queue.length || !player || !ready) return;
+  showItem(i);
+  player.setLoop(repeat === 'all');
+  if (!autoplay) player.cuePlaylist({ playlist: queueIds(), index: i });
+  else if (playerHasQueue() && !startSeconds) player.playVideoAt(i);
+  else player.loadPlaylist({ playlist: queueIds(), index: i, startSeconds: startSeconds || 0 });
+  if (autoplay) iosHint();
 }
 function nextTrack(fromEnd) {
   if (!queue.length) return;
@@ -902,7 +924,7 @@ function updateRepeatBtn() {
 function onYouTubeIframeAPIReady() {
   player = new YT.Player('player', {
     width: '100%', height: '100%',
-    playerVars: { controls: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, disablekb: 1, fs: 0, origin: location.origin },
+    playerVars: { controls: isIOS ? 1 : 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, disablekb: 1, fs: 0, origin: location.origin },
     events: { onReady, onStateChange, onError }
   });
 }
@@ -922,6 +944,12 @@ function onStateChange(e) {
   if (importing && e.data === S.CUED) { finishImport(player.getPlaylist() || []); return; }
   if (importing) return;
   const vd = player.getVideoData ? player.getVideoData() : null;
+  if (vd && vd.video_id && e.data !== S.ENDED && !(cur >= 0 && queue[cur] && queue[cur].id === vd.video_id)) {
+    // プレイヤーが内蔵プレイリストで自分で次の曲へ進んだ → キューの現在位置を合わせる
+    const pi = player.getPlaylistIndex ? player.getPlaylistIndex() : -1;
+    const ni = (pi >= 0 && queue[pi] && queue[pi].id === vd.video_id) ? pi : queue.findIndex(q => q.id === vd.video_id);
+    if (ni >= 0) showItem(ni);
+  }
   if (vd && vd.video_id && cur >= 0 && queue[cur] && queue[cur].id === vd.video_id) {
     if (vd.title && queue[cur].title !== vd.title) { queue[cur].title = vd.title; queue[cur].author = cleanAuthor(vd.author); saveQueue(); renderQueue(); $('#hudTitle').textContent = vd.title; $('#hudSub').textContent = queue[cur].author; document.title = vd.title + ' - Flowrics Web'; }
     if (vd.title && searchedFor !== vd.video_id && (e.data === S.PLAYING || e.data === S.BUFFERING || e.data === S.CUED)) {
@@ -932,15 +960,19 @@ function onStateChange(e) {
     }
   }
   if (e.data === S.ENDED) {
-    if (repeat === 'one') { player.seekTo(0, true); player.playVideo(); }
-    else nextTrack(true);
+    if (repeat === 'one') player.playVideoAt(cur);
+    else if (!playerHasQueue()) {   // 再生中にキューが変わった → 新しいキューをプレイリストとして渡し直して次へ
+      let n = cur + 1; if (n >= queue.length) { if (repeat !== 'all') return; n = 0; }
+      playIndex(n);
+    }
+    // それ以外は、プレイヤーが内蔵プレイリストで自動的に次の曲へ進む(全曲リピートは setLoop)
   }
 }
 function onError(e) {
   const code = e.data;
   if (importing) { finishImport(null); return; }
   toast(code === 101 || code === 150 ? t('embedErr') : code === 100 ? t('notFoundErr') : t('playErr'));
-  if (queue.length > 1) setTimeout(() => { if (cur >= 0) nextTrack(true); }, 1800);
+  if (queue.length > 1) setTimeout(() => { const st = player.getPlayerState(); if (cur >= 0 && st !== YT.PlayerState.PLAYING && st !== YT.PlayerState.BUFFERING) nextTrack(true); }, 1800);
 }
 
 /* ===================== sync loop (iOS 版 tickSynced の移植) ===================== */
@@ -1084,8 +1116,8 @@ function applyMode() {
   const isPv = settings.mode === 'pv';
   document.body.classList.toggle('pvmode', isPv);
   $('#pvOpts').hidden = !isPv;
+  clearDanmaku();   // 切り替え時に流れている弾幕を消す(非表示中はアニメーションが終わらず残るため)
   if (isPv) { ensureJizura().then(() => { sizePvCanvas(); buildPvPlan(); }).catch(() => {}); }
-  else { clearDanmaku(); }
 }
 
 /* ===================== UI wiring ===================== */
@@ -1154,11 +1186,11 @@ $('#play').addEventListener('click', () => {
   if (!player || !ready) return;
   if (cur < 0) { if (queue.length) playIndex(0); else $('#panel').classList.add('open'); return; }
   const s = player.getPlayerState();
-  if (s === YT.PlayerState.PLAYING) player.pauseVideo(); else player.playVideo();
+  if (s === YT.PlayerState.PLAYING) player.pauseVideo(); else { player.playVideo(); iosHint(); }
 });
 $('#next').addEventListener('click', () => nextTrack(false));
 $('#prev').addEventListener('click', prevTrack);
-$('#repeat').addEventListener('click', () => { repeat = repeat === 'off' ? 'all' : repeat === 'all' ? 'one' : 'off'; store.set('repeat', repeat); updateRepeatBtn(); toast($('#repeat').title); });
+$('#repeat').addEventListener('click', () => { repeat = repeat === 'off' ? 'all' : repeat === 'all' ? 'one' : 'off'; store.set('repeat', repeat); updateRepeatBtn(); if (player && ready) player.setLoop(repeat === 'all'); toast($('#repeat').title); });
 $('#seek').addEventListener('pointerdown', () => seeking = true);
 $('#seek').addEventListener('change', e => { seeking = false; if (player && ready) { const d = player.getDuration() || 0; player.seekTo(e.target.value / 1000 * d, true); } });
 $('#seek').addEventListener('pointerup', () => seeking = false);

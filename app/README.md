@@ -54,6 +54,23 @@ Piped(YouTube の非公式フロントエンド)の公開 API を使う。API �
 - 音声解析(拍検出)は YouTube 埋め込みでは使えないので、歌詞タイミングだけで動く。描画が遅い端末では JIZURA と同じ判定で簡易描画に落ちる
 - JIZURA 本体を更新するときは、`src/*.js`(UI と書き出しを除く)を同じ順で連結して `jizura.js` を差し替える
 
+## 再生の仕組み(iPhone 対応)
+
+キュー全体を YouTube プレイヤー内蔵のプレイリスト(`loadPlaylist` / `cuePlaylist` の `playlist` 配列)として渡し、曲が終わったときはプレイヤー自身に次へ進ませる(全曲リピートは `setLoop`)。iPhone / iPad の Safari はページ側からの `playVideo()` / `loadVideoById()` を制限するため、この方式でないと 2 曲目以降が止まる。プレイヤーが自分で進んだときは `onStateChange` で動画 ID からキューの位置を合わせ直す。再生中にキューが変わったときは、その曲が終わった時点で新しいキューを渡し直す。
+
+iOS では最初の再生だけ利用者が動画そのものをタップする必要がある(ページのボタンでは開始できない)ので、iOS ではプレイヤーの標準コントロールを表示し、ボタンを押しても再生が始まらなければ案内をトーストで出す。画面ロックやアプリ切り替えで止まるのは iOS の仕様で回避できない。
+
+## テスト
+
+`app/test/run.js` が YouTube / LRCLIB / oEmbed / Piped をスタブに差し替えてヘッドレス Chromium で一通り動かす(歌詞取得、弾幕、サビ、内蔵プレイリストでの進行とリピート、取り込み、保存、検索、設定、文字PV、初訪問の既定)。
+
+```sh
+npm i playwright            # どこかの作業ディレクトリで。PW_MODULES にその node_modules の親を指定できる
+node app/test/run.js        # Chromium のパスは /opt/pw-browsers から自動検出。PW_CHROME で指定も可
+```
+
+`test/` は `deploy.sh` が配信物から除く。
+
 ## 制約
 
 - YouTube の規約上、音声だけの再生はできない。動画をそのまま背景に表示する
